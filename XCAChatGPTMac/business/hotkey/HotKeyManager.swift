@@ -39,7 +39,7 @@ class HotKeyManager {
             NSLog("key pressed \(Bundle.main.bundleIdentifier)")
             
             if appShortcutOption() == "custom" {
-                MainWindowController.shared.toggle()
+                toggleMainWindow()
             }
         }
 
@@ -70,6 +70,11 @@ class HotKeyManager {
                 TypingInPlace.shared.typeInPlace(conv: conversation)
             } else if isActive {
                 PathManager.shared.toChat(conversation, msg: MainViewModel.shared.searchText)
+                // Notify SwiftUI main split view to focus this bot and inject context
+                NotificationCenter.default.post(name: .init("QuickChatSelectedText"), object: nil, userInfo: [
+                    "convId": conversation.id.uuidString,
+                    "text": MainViewModel.shared.searchText ?? ""
+                ])
             } else if (conversation.autoAddSelectedText) {
                 StartupPasteboardManager.shared.startup { text in
                     switch PathManager.shared.top {
@@ -92,9 +97,19 @@ class HotKeyManager {
                         PathManager.shared.toChat(conversation, msg: text)
                     }
 
+                    // Broadcast selection to SwiftUI main split view as well
+                    NotificationCenter.default.post(name: .init("QuickChatSelectedText"), object: nil, userInfo: [
+                        "convId": conversation.id.uuidString,
+                        "text": text ?? ""
+                    ])
                     resume()
                 }
             } else {
+                // No auto text; still open and focus the bot
+                NotificationCenter.default.post(name: .init("QuickChatSelectedText"), object: nil, userInfo: [
+                    "convId": conversation.id.uuidString,
+                    "text": ""
+                ])
                 resume()
                 PathManager.shared.toChat(conversation)
             }
@@ -103,5 +118,21 @@ class HotKeyManager {
 }
 
 func resume() {
-    MainWindowController.shared.showWindow()
+    if let w = NSApp.windows.first {
+        w.makeKeyAndOrderFront(nil)
+    }
+    NSApp.activate(ignoringOtherApps: true)
+}
+
+func toggleMainWindow() {
+    if let w = NSApp.windows.first {
+        if NSApp.isActive && w.isKeyWindow {
+            NSApp.hide(nil)
+        } else {
+            w.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    } else {
+        NSApp.activate(ignoringOtherApps: true)
+    }
 }

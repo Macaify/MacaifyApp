@@ -11,6 +11,10 @@
 		690934932C67BCBC00797D60 /* AULog in Resources */ = {isa = PBXBuildFile; fileRef = 690934922C67BCBC00797D60 /* AULog */; };
 		690934952C67BF0400797D60 /* AULog in Frameworks */ = {isa = PBXBuildFile; productRef = 690934942C67BF0400797D60 /* AULog */; };
 		690934972C67BF0400797D60 /* Cursor in Frameworks */ = {isa = PBXBuildFile; productRef = 690934962C67BF0400797D60 /* Cursor */; };
+		690B8D142EA48A17008AC9B0 /* BetterAuthMagicLink in Frameworks */ = {isa = PBXBuildFile; productRef = 690B8D132EA48A17008AC9B0 /* BetterAuthMagicLink */; };
+		6924C0E92EA42EEB0062D801 /* BetterAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 6924C0E82EA42EEB0062D801 /* BetterAuth */; };
+		6924C1012EA4333D0062D801 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6924C1002EA4333D0062D801 /* LoginView.swift */; };
+		6924C1032EA434660062D801 /* BetterAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 6924C1022EA434660062D801 /* BetterAuth */; };
 		694053732C6AF1410015191D /* Prompts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694053722C6AF1410015191D /* Prompts.swift */; };
 		694053752C7ACB200015191D /* Compacts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694053742C7ACB200015191D /* Compacts.swift */; };
 		694053782C7AF3A50015191D /* Defaults in Frameworks */ = {isa = PBXBuildFile; productRef = 694053772C7AF3A50015191D /* Defaults */; };
@@ -48,6 +52,7 @@
 		696B6B8929E1953500845C71 /* MacContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6B8829E1953500845C71 /* MacContentView.swift */; };
 		696B6B8B29E1A34A00845C71 /* ConversationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6B8A29E1A34A00845C71 /* ConversationViewModel.swift */; };
 		696B6B8E29E1D96800845C71 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6B8D29E1D96800845C71 /* ChatView.swift */; };
+		69B0AA142D0001B000AA0003 /* ChatTableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA132D0001B000AA0002 /* ChatTableView.swift */; };
 		696B6B9029E2907700845C71 /* Color.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6B8F29E2907700845C71 /* Color.swift */; };
 		696B6B9229E29E3900845C71 /* Themes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6B9129E29E3900845C71 /* Themes.swift */; };
 		696B6B9429E2AEA100845C71 /* CommandDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6B9329E2AEA100845C71 /* CommandDetailView.swift */; };
@@ -79,6 +84,7 @@
 		696B6BD629F6A33000845C71 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6BD529F6A33000845C71 /* Persistence.swift */; };
 		696B6BD929F6BA4100845C71 /* GPTConversationExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6BD829F6BA4100845C71 /* GPTConversationExtensions.swift */; };
 		696B6BDB29F77B8700845C71 /* GPTAnswerExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6BDA29F77B8700845C71 /* GPTAnswerExtensions.swift */; };
+		69C1A0012D11222200AA0001 /* GPTSessionExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69C1A0002D11222200AA0001 /* GPTSessionExtensions.swift */; };
 		696B6BDD29F8A6B300845C71 /* DropdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6BDC29F8A6B300845C71 /* DropdownView.swift */; };
 		696B6BDF29FAD22B00845C71 /* Globals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6BDE29FAD22B00845C71 /* Globals.swift */; };
 		696B6BE129FAD8DB00845C71 /* CommandKeyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6BE029FAD8DB00845C71 /* CommandKeyView.swift */; };
@@ -136,6 +142,15 @@
 		69A6D4A12CA7E4920038B745 /* Defaults+Base.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69A6D4A02CA7E48B0038B745 /* Defaults+Base.swift */; };
 		69A6D4A32CA7F2AC0038B745 /* providers.xml in Resources */ = {isa = PBXBuildFile; fileRef = 69A6D4A22CA7F2A70038B745 /* providers.xml */; };
 		69A6D4A52CA8272F0038B745 /* Base.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69A6D4A42CA8272F0038B745 /* Base.swift */; };
+		69B0AA012D00000100AA0001 /* SettingsTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA002D00000100AA0001 /* SettingsTabs.swift */; };
+		69B0AA032D00000100AA0001 /* AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA022D00000100AA0001 /* AccountSettingsView.swift */; };
+		69B0AA052D00000100AA0001 /* SettingsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA042D00000100AA0001 /* SettingsCard.swift */; };
+		69B0AA072D00000100AA0001 /* DefaultsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA062D00000100AA0001 /* DefaultsSettingsView.swift */; };
+		69B0AA092D00000100AA0001 /* ProvidersSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA082D00000100AA0001 /* ProvidersSettingsView.swift */; };
+		69B0AA0B2D00000100AA0001 /* ModelsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA0A2D00000100AA0001 /* ModelsSettingsView.swift */; };
+		69B0AA0D2D00000100AA0001 /* AdvancedSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA0C2D00000100AA0001 /* AdvancedSettingsView.swift */; };
+		69B0AA122D0001A000AA0001 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA112D0001A000AA0001 /* KeychainHelper.swift */; };
+        69B0AA132D0002B000AA0001 /* StandardSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA142D0002B000AA0001 /* StandardSettingsView.swift */; };
 		69DEEE662A65A86C009840C6 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 69DEEE652A65A86C009840C6 /* GoogleService-Info.plist */; };
 		69DEEE692A65AA3B009840C6 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 69DEEE682A65AA3B009840C6 /* FirebaseAnalytics */; };
 		69DEEE6B2A65AA3B009840C6 /* FirebaseAnalyticsSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 69DEEE6A2A65AA3B009840C6 /* FirebaseAnalyticsSwift */; };
@@ -185,6 +200,7 @@
 		8B91C016298ADC9D0079AF26 /* MessageRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B91C015298ADC9D0079AF26 /* MessageRow.swift */; };
 		8B91C018298ADF4E0079AF26 /* DotLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B91C017298ADF4E0079AF26 /* DotLoadingView.swift */; };
 		8B91C01A298ADF7F0079AF26 /* MessageRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B91C019298ADF7F0079AF26 /* MessageRowView.swift */; };
+        69C0F0022D11111100AA0001 /* NewMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69C0F0012D11111100AA0001 /* NewMainView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -214,6 +230,7 @@
 /* Begin PBXFileReference section */
 		690934902C67BB0000797D60 /* Curosr */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = Curosr; sourceTree = "<group>"; };
 		690934922C67BCBC00797D60 /* AULog */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = AULog; sourceTree = "<group>"; };
+		6924C1002EA4333D0062D801 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		693AF6B42CA95CDA00477550 /* OpenAI */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = OpenAI; path = Packages/OpenAI; sourceTree = "<group>"; };
 		694053722C6AF1410015191D /* Prompts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Prompts.swift; sourceTree = "<group>"; };
 		694053742C7ACB200015191D /* Compacts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Compacts.swift; sourceTree = "<group>"; };
@@ -271,6 +288,7 @@
 		696B6BD529F6A33000845C71 /* Persistence.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
 		696B6BD829F6BA4100845C71 /* GPTConversationExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPTConversationExtensions.swift; sourceTree = "<group>"; };
 		696B6BDA29F77B8700845C71 /* GPTAnswerExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPTAnswerExtensions.swift; sourceTree = "<group>"; };
+		69C1A0002D11222200AA0001 /* GPTSessionExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPTSessionExtensions.swift; sourceTree = "<group>"; };
 		696B6BDC29F8A6B300845C71 /* DropdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropdownView.swift; sourceTree = "<group>"; };
 		696B6BDE29FAD22B00845C71 /* Globals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Globals.swift; sourceTree = "<group>"; };
 		696B6BE029FAD8DB00845C71 /* CommandKeyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandKeyView.swift; sourceTree = "<group>"; };
@@ -327,6 +345,15 @@
 		69A6D4A02CA7E48B0038B745 /* Defaults+Base.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Defaults+Base.swift"; sourceTree = "<group>"; };
 		69A6D4A22CA7F2A70038B745 /* providers.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = providers.xml; sourceTree = "<group>"; };
 		69A6D4A42CA8272F0038B745 /* Base.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Base.swift; sourceTree = "<group>"; };
+		69B0AA002D00000100AA0001 /* SettingsTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTabs.swift; sourceTree = "<group>"; };
+		69B0AA022D00000100AA0001 /* AccountSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountSettingsView.swift; sourceTree = "<group>"; };
+		69B0AA042D00000100AA0001 /* SettingsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsCard.swift; sourceTree = "<group>"; };
+		69B0AA062D00000100AA0001 /* DefaultsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultsSettingsView.swift; sourceTree = "<group>"; };
+		69B0AA082D00000100AA0001 /* ProvidersSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProvidersSettingsView.swift; sourceTree = "<group>"; };
+		69B0AA0A2D00000100AA0001 /* ModelsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsSettingsView.swift; sourceTree = "<group>"; };
+		69B0AA0C2D00000100AA0001 /* AdvancedSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedSettingsView.swift; sourceTree = "<group>"; };
+		69B0AA112D0001A000AA0001 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+        69B0AA142D0002B000AA0001 /* StandardSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandardSettingsView.swift; sourceTree = "<group>"; };
 		69DEEE652A65A86C009840C6 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		8B057582298E52C000A56C9A /* Macaify.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Macaify.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8B057584298E52C000A56C9A /* XCAChatGPTMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XCAChatGPTMacApp.swift; sourceTree = "<group>"; };
@@ -357,6 +384,8 @@
 		8B91C015298ADC9D0079AF26 /* MessageRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageRow.swift; sourceTree = "<group>"; };
 		8B91C017298ADF4E0079AF26 /* DotLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotLoadingView.swift; sourceTree = "<group>"; };
 		8B91C019298ADF7F0079AF26 /* MessageRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageRowView.swift; sourceTree = "<group>"; };
+		69B0AA132D0001B000AA0002 /* ChatTableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatTableView.swift; sourceTree = "<group>"; };
+        69C0F0012D11111100AA0001 /* NewMainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewMainView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -370,8 +399,10 @@
 				696B6BB129EC424400845C71 /* MarkdownUI in Frameworks */,
 				694D074C2CA986B00091156D /* AppUpdater in Frameworks */,
 				690934952C67BF0400797D60 /* AULog in Frameworks */,
+				6924C1032EA434660062D801 /* BetterAuth in Frameworks */,
 				696B6BBD29F10A8000845C71 /* GPTEncoder in Frameworks */,
 				696EEC6A2C68D03A006B27B5 /* SwiftDiff in Frameworks */,
+				690B8D142EA48A17008AC9B0 /* BetterAuthMagicLink in Frameworks */,
 				694053782C7AF3A50015191D /* Defaults in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -398,6 +429,7 @@
 			files = (
 				696B6BAF29EC41AF00845C71 /* MarkdownUI in Frameworks */,
 				696B6BEB29FB77EC00845C71 /* ElegantEmojiPicker in Frameworks */,
+				6924C0E92EA42EEB0062D801 /* BetterAuth in Frameworks */,
 				69DEEE692A65AA3B009840C6 /* FirebaseAnalytics in Frameworks */,
 				696B6BCD29F418B100845C71 /* AlertToast in Frameworks */,
 				69DEEE6B2A65AA3B009840C6 /* FirebaseAnalyticsSwift in Frameworks */,
@@ -438,6 +470,14 @@
 				694D074D2CA989750091156D /* GithubProxy.swift */,
 				694D07492CA986710091156D /* SettingsView.swift */,
 				694D074F2CA9AADA0091156D /* AppUpdaterLink.swift */,
+                69B0AA002D00000100AA0001 /* SettingsTabs.swift */,
+                69B0AA022D00000100AA0001 /* AccountSettingsView.swift */,
+                69B0AA042D00000100AA0001 /* SettingsCard.swift */,
+                69B0AA062D00000100AA0001 /* DefaultsSettingsView.swift */,
+                69B0AA082D00000100AA0001 /* ProvidersSettingsView.swift */,
+                69B0AA0A2D00000100AA0001 /* ModelsSettingsView.swift */,
+                69B0AA0C2D00000100AA0001 /* AdvancedSettingsView.swift */,
+                69B0AA142D0002B000AA0001 /* StandardSettingsView.swift */,
 			);
 			path = settings;
 			sourceTree = "<group>";
@@ -510,6 +550,7 @@
 				696B6B8429E18AF800845C71 /* ConversationPreferenceView.swift */,
 				696B6B7E29E17D4B00845C71 /* APIKeyManager.swift */,
 				696B6B7829E179BC00845C71 /* SettingView.swift */,
+				6924C1002EA4333D0062D801 /* LoginView.swift */,
 				696B6B7A29E17A7C00845C71 /* ModelSelectionManager.swift */,
 				696B6B7C29E17ABD00845C71 /* KeyboardShortcutManager.swift */,
 				696B6B8A29E1A34A00845C71 /* ConversationViewModel.swift */,
@@ -518,6 +559,7 @@
 				698C5AE52A1698A9007C046A /* LanguageOptions.swift */,
 				698C5AE72A16A719007C046A /* AppShortcuts.swift */,
 				694931552CACE23400C344BD /* MainWindowController.swift */,
+				69C0F0012D11111100AA0001 /* NewMainView.swift */,
 			);
 			path = main;
 			sourceTree = "<group>";
@@ -526,6 +568,7 @@
 			isa = PBXGroup;
 			children = (
 				696B6B8D29E1D96800845C71 /* ChatView.swift */,
+				69B0AA132D0001B000AA0002 /* ChatTableView.swift */,
 			);
 			path = chat;
 			sourceTree = "<group>";
@@ -593,6 +636,7 @@
 				69A6D49E2CA7D4980038B745 /* LLMModels.swift */,
 				696B6BD829F6BA4100845C71 /* GPTConversationExtensions.swift */,
 				696B6BDA29F77B8700845C71 /* GPTAnswerExtensions.swift */,
+				69C1A0002D11222200AA0001 /* GPTSessionExtensions.swift */,
 			);
 			path = data;
 			sourceTree = "<group>";
@@ -608,6 +652,7 @@
 				696B6CA32A05F45700845C71 /* StringExtensions.swift */,
 				698C5AD92A13D10B007C046A /* Utils.swift */,
 				695C8A2E2A6BCCD000C621E2 /* Constants.swift */,
+                69B0AA112D0001A000AA0001 /* KeychainHelper.swift */,
 			);
 			path = utils;
 			sourceTree = "<group>";
@@ -882,6 +927,8 @@
 				694053772C7AF3A50015191D /* Defaults */,
 				694D07452CA95E4D0091156D /* OpenAI */,
 				694D074B2CA986B00091156D /* AppUpdater */,
+				6924C1022EA434660062D801 /* BetterAuth */,
+				690B8D132EA48A17008AC9B0 /* BetterAuthMagicLink */,
 			);
 			productName = XCAChatGPTMac;
 			productReference = 8B057582298E52C000A56C9A /* Macaify.app */;
@@ -965,6 +1012,7 @@
 				696B6BEA29FB77EC00845C71 /* ElegantEmojiPicker */,
 				69DEEE682A65AA3B009840C6 /* FirebaseAnalytics */,
 				69DEEE6A2A65AA3B009840C6 /* FirebaseAnalyticsSwift */,
+				6924C0E82EA42EEB0062D801 /* BetterAuth */,
 			);
 			productName = XCAChatGPT;
 			productReference = 8B91C000298AD09E0079AF26 /* XCAChatGPT.app */;
@@ -1016,6 +1064,7 @@
 				69DEEE672A65AA3B009840C6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				696EEC682C68D03A006B27B5 /* XCRemoteSwiftPackageReference "SwiftDiff" */,
 				694053762C7AF3A40015191D /* XCRemoteSwiftPackageReference "Defaults" */,
+				6924C0E72EA42EEB0062D801 /* XCRemoteSwiftPackageReference "BetterAuthSwift" */,
 			);
 			productRefGroup = 8B91C001298AD09E0079AF26 /* Products */;
 			projectDirPath = "";
@@ -1091,6 +1140,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				69C1A0012D11222200AA0001 /* GPTSessionExtensions.swift in Sources */,
+				69C0F0022D11111100AA0001 /* NewMainView.swift in Sources */,
+				69B0AA142D0001B000AA0003 /* ChatTableView.swift in Sources */,
 				698C5AEA2A16ABA3007C046A /* KeyMonitorManager.swift in Sources */,
 				696B6B6F29E16FA100845C71 /* HotKeyManager.swift in Sources */,
 				696B6BF629FB969100845C71 /* EmojiData.swift in Sources */,
@@ -1147,6 +1199,7 @@
 				696B6B9B29E67F3300845C71 /* MyTextField.swift in Sources */,
 				696B6BA029EAD2E100845C71 /* KeyEvents.swift in Sources */,
 				69A6D4A52CA8272F0038B745 /* Base.swift in Sources */,
+				6924C1012EA4333D0062D801 /* LoginView.swift in Sources */,
 				696B6B9D29E7CAFA00845C71 /* RoundedButtonStyle.swift in Sources */,
 				696B6B8929E1953500845C71 /* MacContentView.swift in Sources */,
 				696B6CA42A05F45700845C71 /* StringExtensions.swift in Sources */,
@@ -1173,6 +1226,13 @@
 				696B6BE629FAE82F00845C71 /* GlobalConfig.swift in Sources */,
 				696B6BFD29FB976800845C71 /* EmojiPickerViewModel.swift in Sources */,
 				696B6B7729E178D300845C71 /* MainView.swift in Sources */,
+				69B0AA012D00000100AA0001 /* SettingsTabs.swift in Sources */,
+				69B0AA032D00000100AA0001 /* AccountSettingsView.swift in Sources */,
+				69B0AA052D00000100AA0001 /* SettingsCard.swift in Sources */,
+				69B0AA072D00000100AA0001 /* DefaultsSettingsView.swift in Sources */,
+				69B0AA092D00000100AA0001 /* ProvidersSettingsView.swift in Sources */,
+				69B0AA0B2D00000100AA0001 /* ModelsSettingsView.swift in Sources */,
+				69B0AA0D2D00000100AA0001 /* AdvancedSettingsView.swift in Sources */,
 				69A6D4A12CA7E4920038B745 /* Defaults+Base.swift in Sources */,
 				695C8A2F2A6BCCD000C621E2 /* Constants.swift in Sources */,
 				696EEC872C690F8E006B27B5 /* Patch.swift in Sources */,
@@ -1183,6 +1243,7 @@
 				694D075F2CABA1E40091156D /* Environments.swift in Sources */,
 				696B6B7929E179BC00845C71 /* SettingView.swift in Sources */,
 				8B057585298E52C000A56C9A /* XCAChatGPTMacApp.swift in Sources */,
+                69B0AA132D0002B000AA0001 /* StandardSettingsView.swift in Sources */,
 				698C5AE82A16A719007C046A /* AppShortcuts.swift in Sources */,
 				696B6BDB29F77B8700845C71 /* GPTAnswerExtensions.swift in Sources */,
 				696B6BD929F6BA4100845C71 /* GPTConversationExtensions.swift in Sources */,
@@ -1200,6 +1261,7 @@
 				696B6B8729E1911300845C71 /* PathManager.swift in Sources */,
 				696B6BB829EC4BE100845C71 /* MainViewModel.swift in Sources */,
 				696B6BE829FAEB9C00845C71 /* KeyUtils.swift in Sources */,
+                69B0AA122D0001A000AA0001 /* KeychainHelper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1726,12 +1788,20 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		6924C0E72EA42EEB0062D801 /* XCRemoteSwiftPackageReference "BetterAuthSwift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ouwargui/BetterAuthSwift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
 		694053762C7AF3A40015191D /* XCRemoteSwiftPackageReference "Defaults" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sindresorhus/Defaults";
 			requirement = {
-				branch = main;
-				kind = branch;
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.0.0;
 			};
 		};
 		696B6B6929E16F5900845C71 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
@@ -1800,6 +1870,21 @@
 		690934962C67BF0400797D60 /* Cursor */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Cursor;
+		};
+		690B8D132EA48A17008AC9B0 /* BetterAuthMagicLink */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6924C0E72EA42EEB0062D801 /* XCRemoteSwiftPackageReference "BetterAuthSwift" */;
+			productName = BetterAuthMagicLink;
+		};
+		6924C0E82EA42EEB0062D801 /* BetterAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6924C0E72EA42EEB0062D801 /* XCRemoteSwiftPackageReference "BetterAuthSwift" */;
+			productName = BetterAuth;
+		};
+		6924C1022EA434660062D801 /* BetterAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6924C0E72EA42EEB0062D801 /* XCRemoteSwiftPackageReference "BetterAuthSwift" */;
+			productName = BetterAuth;
 		};
 		694053772C7AF3A50015191D /* Defaults */ = {
 			isa = XCSwiftPackageProductDependency;

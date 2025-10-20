@@ -9,9 +9,12 @@
         <attribute name="timestamp_" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="uuid_" attributeType="UUID" defaultValueString="" usesScalarValueType="NO"/>
         <relationship name="belongsTo" maxCount="1" deletionRule="Nullify" destinationEntity="GPTConversation" inverseName="own_" inverseEntity="GPTConversation"/>
+        <relationship name="session" optional="YES" minCount="0" maxCount="1" deletionRule="Nullify" destinationEntity="GPTSession" inverseName="messages" inverseEntity="GPTSession"/>
     </entity>
     <entity name="GPTConversation" representedClassName="GPTConversation" syncable="YES" codeGenerationType="class">
         <attribute name="autoAddSelectedText_" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="modelSource_" attributeType="String" defaultValueString="default"/>
+        <attribute name="modelInstanceId_" attributeType="String" defaultValueString=""/>
         <attribute name="desc_" attributeType="String" defaultValueString=""/>
         <attribute name="icon_" attributeType="String" defaultValueString=""/>
         <attribute name="name_" attributeType="String" defaultValueString="&quot;&quot;"/>
@@ -21,6 +24,17 @@
         <attribute name="typingInPlace_" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="uuid_" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="withContext_" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="modelId_" attributeType="String" defaultValueString=""/>
         <relationship name="own_" toMany="YES" deletionRule="Nullify" ordered="YES" destinationEntity="GPTAnswer" inverseName="belongsTo" inverseEntity="GPTAnswer"/>
+        <relationship name="sessions_" toMany="YES" deletionRule="Cascade" ordered="YES" destinationEntity="GPTSession" inverseName="agent" inverseEntity="GPTSession"/>
+    </entity>
+    <entity name="GPTSession" representedClassName="GPTSession" syncable="YES" codeGenerationType="class">
+        <attribute name="archived_" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="createdAt_" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt_" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="title_" attributeType="String" defaultValueString=""/>
+        <attribute name="uuid_" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="agent" maxCount="1" deletionRule="Nullify" destinationEntity="GPTConversation" inverseName="sessions_" inverseEntity="GPTConversation"/>
+        <relationship name="messages" toMany="YES" deletionRule="Nullify" ordered="YES" destinationEntity="GPTAnswer" inverseName="session" inverseEntity="GPTAnswer"/>
     </entity>
 </model>

@@ -8,6 +8,7 @@
 import Foundation
 import AppKit
 import SwiftUI
+import BetterAuth
 
 class MainWindowController: NSWindowController, NSWindowDelegate {
     static let shared = MainWindowController()
@@ -29,15 +30,23 @@ class MainWindowController: NSWindowController, NSWindowDelegate {
     }
     
     override func loadWindow() {
-        window = MainWindow(contentRect: .init(x: 0, y: 0, width: 720, height: 500), styleMask: [.fullSizeContentView, .resizable, .closable, .miniaturizable], backing: .buffered, defer: true)
-        window?.level = .normal
-        window?.contentView = NSHostingView(rootView: contentView
-            .environmentObject(globalConfig))
-        window?.center()
-        window?.delegate = self
-        window?.backgroundColor = .clear
-        window?.titlebarAppearsTransparent = true
-        window?.isMovableByWindowBackground = true
+        let rect = NSRect(x: 0, y: 0, width: 960, height: 640)
+        window = MainWindow(contentRect: rect,
+                            styleMask: [.titled, .resizable, .closable, .miniaturizable],
+                            backing: .buffered, defer: true)
+        guard let window else { return }
+        window.level = .normal
+        window.title = "Macaify"
+        window.isMovableByWindowBackground = false
+        window.titlebarAppearsTransparent = false
+        window.backgroundColor = .windowBackgroundColor
+
+        window.contentView = NSHostingView(rootView: contentView.environmentObject(globalConfig))
+        window.center()
+        window.delegate = self
+
+        // SwiftUI Toolbar is provided in MainView. Remove AppKit toolbar to avoid duplication/layout shifts.
+        window.toolbar = nil
     }
     
     func showWindow() {
@@ -99,13 +108,18 @@ struct ContentViewWrapper: View {
     @StateObject var vm = ConversationViewModel.shared
     @StateObject private var emojiViewModel = EmojiPickerViewModel()
     @AppStorage("selectedLanguage") var userDefaultsSelectedLanguage: String?
-    
+    @StateObject private var authClient = BetterAuthClient(
+        baseURL: URL(string: "http://localhost:3000")!
+//        baseURL: URL(string: "https://dash.macaify.com")!
+      )
+
     var body: some View {
         MacContentView()
             .environmentObject(vm)
             .environmentObject(emojiViewModel)
             .environment(\.locale, .init(identifier: userDefaultsSelectedLanguage ?? "en"))
-            .cornerRadius(16)
+            .environmentObject(authClient)
+            .cornerRadius(12)
             .background {
                 Button {
                     MainWindowController.shared.closeWindow()
@@ -117,3 +131,5 @@ struct ContentViewWrapper: View {
             }
     }
 }
+
+// (Toolbar logic moved to SwiftUI .toolbar in MainView)

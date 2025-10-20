@@ -54,6 +54,21 @@ extension GPTConversation {
         get { return withContext_ }
         set { withContext_ = newValue }
     }
+    // Per-bot selected account model id (if modelSource == "account").
+    var modelId: String {
+        get { return modelId_ ?? "" }
+        set { modelId_ = newValue }
+    }
+    // Model selection: "default" | "instance"
+    var modelSource: String {
+        get { return modelSource_ ?? "default" }
+        set { modelSource_ = newValue }
+    }
+    // When modelSource == "instance"; reference CustomModelInstance.id
+    var modelInstanceId: String {
+        get { return modelInstanceId_ ?? "" }
+        set { modelInstanceId_ = newValue }
+    }
     var own: [GPTAnswer] {
         get {
             return (own_?.array ?? []) as! [GPTAnswer]
@@ -63,7 +78,7 @@ extension GPTConversation {
         }
     }
     
-    convenience init(_ name: String, id: UUID = UUID(), prompt: String = "", desc: String = "", icon: String = "", shortcut: String = "", timestamp: Date = Date(), autoAddSelectedText: Bool = true, typingInPlace: Bool = true, withContext: Bool = true, own: [GPTAnswer] = [], context: NSManagedObjectContext = PersistenceController.memoryContext) {
+    convenience init(_ name: String, id: UUID = UUID(), prompt: String = "", desc: String = "", icon: String = "", shortcut: String = "", timestamp: Date = Date(), autoAddSelectedText: Bool = true, typingInPlace: Bool = true, withContext: Bool = true, modelSource: String = "default", modelInstanceId: String = "", modelId: String = "", own: [GPTAnswer] = [], context: NSManagedObjectContext = PersistenceController.memoryContext) {
         self.init(context: context)
         self.name = name
         self.uuid = uuid
@@ -75,6 +90,9 @@ extension GPTConversation {
         self.autoAddSelectedText = autoAddSelectedText
         self.typingInPlace = typingInPlace
         self.withContext = withContext
+        self.modelSource = modelSource
+        self.modelInstanceId = modelInstanceId
+        self.modelId = modelId
         self.own = own
     }
 
@@ -88,6 +106,9 @@ extension GPTConversation {
              autoAddSelectedText: Bool? = nil,
              typingInPlace: Bool? = nil,
              withContext: Bool? = nil,
+             modelSource: String? = nil,
+             modelInstanceId: String? = nil,
+             modelId: String? = nil,
              own: [GPTAnswer]? = nil,
              context: NSManagedObjectContext? = nil) -> GPTConversation {
         let name = name ?? self.name
@@ -100,9 +121,12 @@ extension GPTConversation {
         let autoAddSelectedText = autoAddSelectedText ?? self.autoAddSelectedText
         let typingInPlace = typingInPlace ?? self.typingInPlace
         let withContext = withContext ?? self.withContext
+        let modelSource = modelSource ?? self.modelSource
+        let modelInstanceId = modelInstanceId ?? self.modelInstanceId
+        let modelId = modelId ?? self.modelId
         let context = context ?? self.managedObjectContext!
 
-        let newConv = GPTConversation(name, id: id, prompt: prompt, desc: desc, icon: icon, shortcut: shortcut, timestamp: timestamp, autoAddSelectedText: autoAddSelectedText, typingInPlace: typingInPlace, withContext: withContext, context: context)
+        let newConv = GPTConversation(name, id: id, prompt: prompt, desc: desc, icon: icon, shortcut: shortcut, timestamp: timestamp, autoAddSelectedText: autoAddSelectedText, typingInPlace: typingInPlace, withContext: withContext, modelSource: modelSource, modelInstanceId: modelInstanceId, modelId: modelId, context: context)
         
         // 热键转移
         if let shortcut = KeyboardShortcuts.getShortcut(for: self.Name) {

@@ -15,7 +15,7 @@ struct ContentView: View {
     @ObservedObject var vm: ViewModel
     @FocusState var isTextFieldFocused: Bool
     @State var scrolledByUser = false
-    @State var textWidth: CGFloat = 436
+    // Simplify input sizing to reduce layout cost
     @State var resetHovered: Bool = false
     @State var newHovered: Bool = false
 
@@ -50,9 +50,8 @@ struct ContentView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 0) {
-                            ForEach(0..<vm.messages.count, id: \.self) { index in
-                                let message = vm.messages[index]
-                                MessageRowView(message: message, tag: "\(vm.messages.count - index)") { message in
+                            ForEach(vm.messages) { message in
+                                MessageRowView(message: message, tag: "\(message.id.uuidString.prefix(1))") { message in
                                     Task { @MainActor in
                                         await vm.retry(message: message)
                                     }
@@ -68,14 +67,12 @@ struct ContentView: View {
                     bottomView(image: "profile", proxy: proxy)
                         .padding(4)
                 }
-                .background(.white)
+                .background(.background)
                 .background(.regularMaterial)
-                .shadow(color: .gray.opacity(0.05), radius: 20, x: 0, y: 2)
+                .shadow(color: .gray.opacity(0.03), radius: 8, x: 0, y: 1)
             })
             .onChange(of: vm.messages.last?.responseText) { _ in
-                if (!scrolledByUser) {
-                    scrollToBottom(proxy: proxy)
-                }
+                throttleScrollToBottom(proxy: proxy)
             }
             .onChange(of: vm.messages.last?.clearContextAfterThis) { _ in
                 scrollToBottom(proxy: proxy)
@@ -88,7 +85,7 @@ struct ContentView: View {
                 trackScrollWheel()
             }
         }
-        .background(colorScheme == .light ? .white : Color(red: 52/255, green: 53/255, blue: 65/255, opacity: 0.5))
+        .background(.background)
 //        .background(.regularMaterial)
     }
     
@@ -125,25 +122,16 @@ struct ContentView: View {
             .onHover { hover in
                 newHovered = hover
             }
-
-            GeometryReader { reader in
-                InputEditor(placeholder: String("Tab to chat"), text: $vm.inputMessage, onShiftEnter: {
-                    Task { @MainActor in
-                        if !vm.inputMessage.isEmpty {
-                            scrolledByUser = false
-                            scrollToBottom(proxy: proxy)
-                            await vm.sendTapped()
-                        }
+            InputEditor(placeholder: String("Tab to chat"), text: $vm.inputMessage, onShiftEnter: {
+                Task { @MainActor in
+                    if !vm.inputMessage.isEmpty {
+                        scrolledByUser = false
+                        scrollToBottom(proxy: proxy)
+                        await vm.sendTapped()
                     }
-                })
-                .anchorPreference(key: TextWidthKey.self, value: .bounds, transform: { anchor in
-                    reader[anchor].size.width
-                })
-                .onPreferenceChange(TextWidthKey.self) { height in
-                    self.textWidth = height
                 }
-                .frame(maxHeight: CGFloat(vm.inputMessage.lineCount(frameWidth: self.textWidth)) * 20)
-//                .animation(.easeInOut)
+            })
+            .frame(minHeight: 32, maxHeight: 120)
 #if os(iOS) || os(macOS)
                 .textFieldStyle(.roundedBorder)
 #endif
@@ -152,8 +140,7 @@ struct ContentView: View {
                 .task {
                     isTextFieldFocused = true
                 }
-            }
-            .frame(maxHeight: CGFloat(vm.inputMessage.lineCount(frameWidth: self.textWidth)) * 20)
+
             if vm.isInteractingWithChatGPT {
                 HStack {
                     DotLoadingView().frame(width: 40, height: 30)
@@ -199,6 +186,17 @@ struct ContentView: View {
         guard let id = vm.messages.last?.id else { return }
         proxy.scrollTo(id, anchor: .bottom)
     }
+
+    // Reduce excessive scroll invocations during streaming
+    @State private var lastScrollTime: TimeInterval = 0
+    private func throttleScrollToBottom(proxy: ScrollViewProxy) {
+        guard !scrolledByUser else { return }
+        let now = Date.timeIntervalSinceReferenceDate
+        if now - lastScrollTime > 0.06 {
+            lastScrollTime = now
+            scrollToBottom(proxy: proxy)
+        }
+    }
 }
 struct ScrollOffsetPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
@@ -208,10 +206,4 @@ struct ScrollOffsetPreferenceKey: PreferenceKey {
     }
 }
 
-struct TextWidthKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
+// Removed dynamic text width tracking to reduce layout work

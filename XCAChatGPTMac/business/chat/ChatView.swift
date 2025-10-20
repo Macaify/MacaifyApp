@@ -17,9 +17,65 @@ struct ChatView: View {
             conversation.id
         }
     }
-    
-    var pathManager: PathManager = PathManager.shared
-    var commandStore: ConversationViewModel = ConversationViewModel.shared
+    var bottomBar: some View {
+        HStack(alignment: .center, spacing: 8) {
+            PlainButton(icon: "clear", label: "删除记录 ⌘D", backgroundColor: ChatTokens.controlBackground, pressedBackgroundColor: ChatTokens.controlBackground.opacity(0.9), shortcut: .init("d"), modifiers: .command, autoShowShortcutHelp: false, showLabel: false) {
+                vm.clearMessages()
+            }
+            .help("删除聊天记录 ⌘D")
+
+            PlainButton(icon: "lasso.sparkles", label: "新聊天 ⌘N", backgroundColor: ChatTokens.controlBackground, pressedBackgroundColor: ChatTokens.controlBackground.opacity(0.9), shortcut: .init("n"), modifiers: .command, autoShowShortcutHelp: false, showLabel: false) {
+                vm.clearContext()
+            }
+            .help("新聊天 ⌘N")
+
+            InputEditor(placeholder: String("Tab to chat"), text: $vm.inputMessage, onShiftEnter: {
+                Task { @MainActor in
+                    if !vm.inputMessage.isEmpty {
+                        scrollSignal &+= 1
+                        await vm.sendTapped()
+                    }
+                }
+            })
+            .frame(minHeight: ChatTokens.controlHeight, maxHeight: 120)
+            .textFieldStyle(.roundedBorder)
+            .disabled(vm.isInteractingWithChatGPT)
+
+            if vm.isInteractingWithChatGPT {
+                HStack(spacing: 8) {
+                    DotLoadingView().frame(width: 40, height: 30)
+                    PlainButton(icon: "stop.circle", label: "停止生成", backgroundColor: .red.opacity(0.6), pressedBackgroundColor: .red.opacity(0.7), foregroundColor: .white, shortcut: .init("s"), modifiers: .command) {
+                        vm.interupt()
+                    }
+                }
+            } else {
+                HStack(spacing: 8) {
+                    PlainButton(label: "发送 ↩", backgroundColor: .accentColor, pressedBackgroundColor: .accentColor.opacity(0.9), foregroundColor: .white, shortcut: .return, autoShowShortcutHelp: false, action: {
+                        Task { @MainActor in
+                            if !vm.inputMessage.isEmpty {
+                                scrollSignal &+= 1
+                                await vm.sendTapped()
+                            }
+                        }
+                    })
+                    .disabled(vm.inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .opacity(vm.inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+
+                    PlainButton(label: "使用回答 ⌘↩", backgroundColor: ChatTokens.controlBackground, pressedBackgroundColor: ChatTokens.controlBackground.opacity(0.9), shortcut: .return, modifiers: .command, autoShowShortcutHelp: false) {
+                        Task { @MainActor in
+                            NSApplication.shared.hide(nil)
+                            paste(delay: 0.1, sentence: vm.messages.last?.responseText ?? "")
+                        }
+                    }
+                    .disabled(vm.messages.last?.responseText?.isEmpty ?? true)
+                    .opacity(vm.messages.last?.responseText?.isEmpty ?? true ? 0.5 : 1)
+                }
+            }
+        }
+        .padding(.horizontal, 8)
+    }
+    @ObservedObject var pathManager: PathManager = PathManager.shared
+    @ObservedObject var commandStore: ConversationViewModel = ConversationViewModel.shared
     @State var vm: ViewModel
     @AppStorage("proxyAddress") private var proxyAddress = ""
     @AppStorage("useProxy") private var useProxy = false
@@ -30,89 +86,51 @@ struct ChatView: View {
         self.conversation = command
         self.mode = mode
         self.onBack = onBack
-        let useVoice = UserDefaults.standard.object(forKey: "useVoice") as? Bool ?? false
-        let api = command.API
+//        let useVoice = UserDefaults.standard.object(forKey: "useVoice") as? Bool ?? false
+//        let api = command.API
 //        self.vm = ViewModel(conversation: command, api: api, enableSpeech: useVoice)
-        self.vm = commandStore.commandViewModel(command)
-        print("ChatView init")
+        self.vm = ConversationViewModel.shared.commandViewModel(command)
 //        print("proxy \(useProxy) \(proxyAddress) \(msg)")
         self.vm.inputMessage = msg ?? ""
     }
 
+    @State private var scrollSignal: Int = 0
+
     var body: some View {
-//        let _ = Self._printChanges() // ✅ Dump the information that triggered the View update.
+        VStack(spacing: 0) {
+            ChatTableView(vm: vm, onRetry: { message in
+                Task { @MainActor in await vm.retry(message: message) }
+            }, scrollSignal: $scrollSignal)
 
-        ContentView(vm: self.vm)
-            .safeAreaInset(edge: .top, content: {
-                VStack(spacing: 0) {
-                    titleBar
-                        .background(.white.opacity(0.95))
-                        .background(.regularMaterial)
-                        .shadow(color: .gray.opacity(0.05), radius: 20)
-                    Divider()
-        //                .toast(isPresenting: $showToast){
-                            // `.alert` is the default displayMode
-        //                    AlertToast(displayMode: .hud, type: .regular, title: "Added to favorites", style: .style(backgroundColor: .white))
-                            
-                            //Choose .hud to toast alert from the top of the screen
-                            //AlertToast(displayMode: .hud, type: .regular, title: "Message Sent!")
-        //                }
-                }
-            })
-        .ignoresSafeArea(.all)
-        .background(.white)
-        .onKeyPressed(.escape) { event in
-            print("escape")
-            NSApp.hide(nil)
-            return true
+            Divider()
+
+            bottomBar
+                .padding(6)
+                .background(.regularMaterial)
         }
-    }
-
-    var titleBar: some View {
-        ConfigurableView(onBack: {
-            onBack()
-        }, title: "\(conversation.iconOrDefault) \(conversation.name)", showLeftButton: true, actions: {
-            switch mode {
-            case .normal: normalActions
-            case .trial: trialActions
-            }
-        })
-//        .navigationBarBackButtonHidden(true)
-        .onAppear {
-            print("chatView onAppear \(conversation.name) conversationId \(conversation.id)")
-            Task { [self] in
-                print("run task sendTapped conversationId \(conversation.id)")
-                if (!vm.isInteractingWithChatGPT && !self.vm.inputMessage.isEmpty) {
-                    await self.vm.sendTapped()
+        .background(.background)
+        .task {
+            // Load history immediately for a snappy feel
+            await vm.loadInitialMessagesAsync()
+            await MainActor.run {
+                if (!vm.isInteractingWithChatGPT && !vm.inputMessage.isEmpty) {
+                    scrollSignal &+= 1
                 }
             }
+            if (!vm.isInteractingWithChatGPT && !vm.inputMessage.isEmpty) {
+                await vm.sendTapped()
+            }
         }
-        .onDisappear {
-            print("chatView onDisappear \(conversation.name)")
-        }
+        .onKeyPressed(.escape) { _ in NSApp.hide(nil); return true }
     }
+
     
-    var normalActions: some View {
-        PlainButton(icon: "slider.horizontal.3", shortcut: .init("e"), modifiers: .command, action: {
-            // 编辑按钮的响应
-            print("button down")
-            pathManager.to(target: .editCommand(command: conversation))
-        })
-    }
-    
-    var trialActions: some View {
-        PlainButton(icon: "rectangle.stack.badge.plus", label: "添加到常用", backgroundColor: Color.purple, pressedBackgroundColor: Color.purple.opacity(0.8), foregroundColor: .white, shortcut: .init("e"), modifiers: .command, action: {
-            // 编辑按钮的响应
-            print("添加到常用 \(conversation.name)")
-            commandStore.addCommand(command: conversation)
-            showToast = true
-        })
-    }
     
     @MainActor
     func setMessage(msg: String?) async {
-        print("ChatView setMessage \(msg)")
+        print("ChatView setMessage \(msg ?? "nil")")
         self.vm.inputMessage = msg ?? ""
+        scrollSignal &+= 1
         await self.vm.sendTapped()
     }
 }

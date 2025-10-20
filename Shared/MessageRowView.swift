@@ -6,7 +6,29 @@
 //
 
 import SwiftUI
-import MarkdownUI
+// Markdown rendering is disabled to improve scrolling performance
+
+// Cross‑platform design tokens for Chat UI
+enum ChatTokens {
+    static let bubbleRadius: CGFloat = 10
+    static let gap: CGFloat = 12
+    static let rowPaddingH: CGFloat = 16
+    static let rowPaddingV: CGFloat = 12
+    static let iconSize: CGFloat = 24
+    static let controlHeight: CGFloat = 32
+
+    static var controlBackground: Color {
+        #if canImport(AppKit)
+        return Color(nsColor: .controlBackgroundColor)
+        #elseif canImport(UIKit)
+        return Color(uiColor: .systemGray6)
+        #else
+        return Color.gray.opacity(0.1)
+        #endif
+    }
+
+    static var strokeColor: Color { Color.gray.opacity(0.12) }
+}
 
 struct MessageRowView: View {
     
@@ -27,21 +49,15 @@ struct MessageRowView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            messageRow(text: message.sendText, image: message.sendImage, bgColor: colorScheme == .light ? .white.opacity(0.8) : Color(red: 52/255, green: 53/255, blue: 65/255, opacity: 0.5), isResponse: false)
-            
+            messageRow(text: message.sendText, image: message.sendImage, isResponse: false)
             if let text = message.responseText {
-//                Divider().padding(.horizontal)
-                messageRow(text: text, image: message.responseImage, bgColor: colorScheme == .light ? .white : Color(red: 52/255, green: 53/255, blue: 65/255, opacity: 1), responseError: message.responseError, showDotLoading: message.isInteractingWithChatGPT, isResponse: true, clearContextAfterThis: message.clearContextAfterThis)
-//                Divider().padding(.horizontal)
+                messageRow(text: text, image: message.responseImage, responseError: message.responseError, showDotLoading: message.isInteractingWithChatGPT, isResponse: true, clearContextAfterThis: message.clearContextAfterThis)
             }
-            
-            if message.clearContextAfterThis {
-                divider
-            }
+            if message.clearContextAfterThis { divider }
         }
     }
     
-    func messageRow(text: String, image: String, bgColor: Color, responseError: String? = nil, showDotLoading: Bool = false, isResponse: Bool = true, clearContextAfterThis: Bool = false) -> some View {
+    func messageRow(text: String, image: String, responseError: String? = nil, showDotLoading: Bool = false, isResponse: Bool = true, clearContextAfterThis: Bool = false) -> some View {
         #if os(watchOS)
         VStack(alignment: .leading, spacing: 8) {
             messageRowContent(text: text, image: image, responseError: responseError, showDotLoading: showDotLoading, isResponse: isResponse, clearContextAfterThis: false)
@@ -49,16 +65,13 @@ struct MessageRowView: View {
         
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(bgColor)
+        .background(bubbleBackground(isResponse: isResponse))
         #else
-        HStack(alignment: .top, spacing: 24) {
+        HStack(alignment: .top, spacing: ChatTokens.gap) {
             messageRowContent(text: text, image: image, responseError: responseError, showDotLoading: showDotLoading, isResponse: isResponse)
         }
-        #if os(tvOS)
-        .padding(32)
-        #else
-        .padding(16)
-        #endif
+        .padding(.horizontal, ChatTokens.rowPaddingH)
+        .padding(.vertical, ChatTokens.rowPaddingV)
         .frame(maxWidth: .infinity, alignment: .leading)
         #endif
     }
@@ -80,15 +93,20 @@ struct MessageRowView: View {
                 .frame(width: imageSize.width, height: imageSize.height)
         }
         
-        VStack(alignment: .leading) {
-            Markdown {
-                text
-            }
-            .markdownTextStyle(textStyle: {
-                FontSize(.em(0.55))
-                ForegroundColor(Color.hex(0x37414F))
-            })
-            .textSelection(.enabled)
+        VStack(alignment: .leading, spacing: 8) {
+            // Markdown disabled for performance: render all as plain text
+            Text(text)
+                .font(.body)
+                .foregroundStyle(.primary)
+                .textSelection(.enabled)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(bubbleBackground(isResponse: isResponse))
+                .clipShape(RoundedRectangle(cornerRadius: ChatTokens.bubbleRadius))
+                .overlay(
+                    RoundedRectangle(cornerRadius: ChatTokens.bubbleRadius)
+                        .stroke(ChatTokens.strokeColor, lineWidth: 0.8)
+                )
             
             if let error = responseError {
                 Text("Error: \(error)")
@@ -136,6 +154,14 @@ struct MessageRowView: View {
 //            }
         }
     }
+
+    private func bubbleBackground(isResponse: Bool) -> Color {
+        if colorScheme == .light {
+            return isResponse ? Color.black.opacity(0.04) : Color.black.opacity(0.025)
+        } else {
+            return isResponse ? Color.white.opacity(0.06) : Color.white.opacity(0.04)
+        }
+    }
     
     #if os(tvOS)
     private func rowsFor(text: String) -> [String] {
@@ -176,9 +202,8 @@ struct MessageRowView: View {
                 .frame(height: 1)
                 .foregroundColor(.divider)
             Text("new_chat")
-                .font(.body)
-                .foregroundColor(.text)
-                .opacity(0.5)
+                .font(.caption)
+                .foregroundStyle(.secondary)
                 .frame(height: 1)
             Rectangle()
                 .frame(height: 1)

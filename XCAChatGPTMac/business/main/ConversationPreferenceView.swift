@@ -8,6 +8,7 @@
 import SwiftUI
 import AppKit
 import KeyboardShortcuts
+import Defaults
 
 struct ConversationPreferenceView: View {
 
@@ -20,11 +21,9 @@ struct ConversationPreferenceView: View {
     @State var prompt: String
     let mode: ConversationPreferenceMode
 
-    @FocusState private var focusField: FocusField?
     @State private var isShowingPopover = false
     @State private var icon: Emoji? = nil
     
-    @State private var showingAlert = false
 
     init(conversation: GPTConversation, mode: ConversationPreferenceMode) {
         self.conversation = conversation
@@ -35,96 +34,57 @@ struct ConversationPreferenceView: View {
         self.prompt = conversation.prompt
     }
     
-    private enum FocusField {
-        case title
-        case prompt
-        case shortcut
-        case autoAddText
-    }
-
     var isNew: Bool {
         get { mode == .add }
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            ConfigurableView(onBack: {
-                if (mode == .edit) {
-                    if (conversation.name.isEmpty) {
-                        conversation.name = "Untitled"
-                    }
-                    commandStore.updateCommand(command: conversation)
-                }
-                pathManager.back()
-            }, title: isNew ? "create_bot" : "edit_bot", showLeftButton: true) {
-                if !isNew {
-                    PlainButton(icon: "trash", foregroundColor: .red, shortcut: .init("d"), modifiers: .command) {
-                        // 删除按钮的响应
-                        commandStore.removeCommand(conversation)
-                        pathManager.toMain()
-                    }
-                }
-            }
-            .alert(isPresented: $showingAlert) {
-                        Alert(title: Text("error"), message: Text("user_cannot_empty"), dismissButton: .default(Text("ok")))
-                    }
-
+        NavigationStack {
             Form {
                 iconView
-                
                 Section {
                     name
                     systemProtmp
                 }
-                
+                modelUnifiedSelection
                 useContext
-
                 hotkey
-                
                 typingInPlaceItem
             }
-            .background(.white)
             .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
-
-            Spacer()
-
-            // 底部信息栏
-            HStack {
-                Spacer()
-                PlainButton(icon: "tray.full", label: "done", shortcut: .init("s"), modifiers: .command) {
-                    // 保存按钮的响应
-                    switch (mode) {
-                    case .add:
-                        if (conversation.name.isEmpty) {
-                            conversation.name = "Untitled"
-                        }
-                        commandStore.addCommand(command: conversation)
-                        commandStore.selectedItemIndex = 0
-                    case .edit:
-                        if (conversation.name.isEmpty) {
-                            conversation.name = "Untitled"
-                        }
-                        commandStore.updateCommand(command: conversation)
-                    default:
-                        break
-                    }
-                    pathManager.back()
+            .navigationTitle(isNew ? "新建机器人" : "编辑机器人")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { pathManager.back() }
                 }
-                .disabled(mode == .trial)
-            }
-            .padding()
-            .onAppear {
-                print("AddCommandView onAppear")
-                focusField = .title
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    focusField = .title
+                if !isNew {
+                    ToolbarItem(placement: .destructiveAction) {
+                        Button("删除") {
+                            commandStore.removeCommand(conversation)
+                            pathManager.toMain()
+                        }
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { saveAndClose() }
+                        .keyboardShortcut(.defaultAction)
                 }
             }
         }
-        .background(Color(.white))
-//        .navigationBarBackButtonHidden(true)
+    }
+
+    private func saveAndClose() {
+        if conversation.name.isEmpty { conversation.name = "Untitled" }
+        switch (mode) {
+        case .add:
+            commandStore.addCommand(command: conversation)
+            commandStore.selectedItemIndex = 0
+        case .edit:
+            commandStore.updateCommand(command: conversation)
+        default:
+            break
+        }
+        pathManager.back()
     }
     
     var iconView: some View {
@@ -204,33 +164,137 @@ struct ConversationPreferenceView: View {
     }
     
     var typingInPlaceItem: some View {
-        Section {
-            Group {
-                if #available(macOS 14, *) {
-                    Picker("bot_type", selection: $typingInPlace) {
-                        Text("bot_type_edit").tag(true)
-                        Text("bot_type_chat").tag(false)
-                    }
-                    .pickerStyle(.segmented)
-                } else {
-                    Picker("bot_type", selection: $typingInPlace) {
-                        Text("bot_type_edit").tag(true)
-                        Text("bot_type_chat").tag(false)
-                    }
-                    .pickerStyle(.segmented)
+        Section("行为") {
+            HStack {
+                Spacer()
+                Picker("", selection: $typingInPlace) {
+                    Text("编辑模式").tag(true)
+                    Text("聊天模式").tag(false)
                 }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .onChange(of: typingInPlace) { conversation.typingInPlace = $0 }
             }
-            .fixedSize()
-            .onChange(of: typingInPlace) { newValue in
-                conversation.typingInPlace = newValue
-            }
-            Text(typingInPlace ? "tip_mode_description" : "chat_mode_description")
-                .opacity(0.7)
-            
             if !typingInPlace {
                 autoAddText
             }
         }
+    }
+
+    // MARK: - Unified model chooser (account + custom)
+    @State private var showModelPopover = false
+    @State private var hoverModel: ModelItem? = nil
+    @State private var selectedModel: ModelItem? = nil
+
+    struct ModelItem: Identifiable, Hashable { let id: String; let title: String; let provider: String; let context: Int; let source: Source; let instanceId: String?; enum Source { case account, custom } }
+
+    var modelUnifiedSelection: some View {
+        Section("模型") {
+            LabeledContent("模型") {
+                Button {
+                    showModelPopover.toggle()
+                } label: {
+                    HStack(spacing: 8) {
+                        Text(currentModelTitle)
+                        Image(systemName: "chevron.down").font(.system(size: 12, weight: .semibold))
+                    }
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(RoundedRectangle(cornerRadius: 6).stroke(Color.gray.opacity(0.2)))
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $showModelPopover, arrowEdge: .bottom) {
+                    modelPickerPopover
+                        .frame(width: 560, height: 380)
+                }
+            }
+        }
+    }
+
+    private var currentModelTitle: String {
+        if conversation.modelSource == "instance" {
+            return ProviderStore.shared.providers.first(where: { $0.id == conversation.modelInstanceId })?.name ?? "模型"
+        } else if !conversation.modelId.isEmpty {
+            return conversation.modelId
+        } else {
+            return Defaults[.selectedModelId]
+        }
+    }
+
+    private var modelPickerPopover: some View {
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 6) {
+                TextField("Search...", text: Binding(
+                    get: { _search }, set: { _search = $0 }
+                )).textFieldStyle(.roundedBorder)
+                List(selection: $selectedModel) {
+                    if !accountItemsFiltered.isEmpty {
+                        Section(String(localized: "账户模型")) { ForEach(accountItemsFiltered) { itemRow($0) } }
+                    }
+                    if !customItemsFiltered.isEmpty {
+                        Section(String(localized: "我的模型实例")) { ForEach(customItemsFiltered) { itemRow($0) } }
+                    }
+                }
+            }
+            .frame(width: 280)
+            Divider()
+            VStack(alignment: .leading, spacing: 8) {
+                if let h = (selectedModel ?? hoverModel) {
+                    Text(h.title).font(.headline)
+                    Divider()
+                    LabeledContent("Provider") { Text(h.provider) }
+                    LabeledContent("上下文") { Text("\(h.context) tokens") }
+                } else {
+                    Text("悬停以查看详情").foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(12)
+        }
+        .padding(8)
+        .onAppear { preselectCurrentModel() }
+    }
+
+    @State private var _search = ""
+    private var accountItems: [ModelItem] {
+        LLMModelsManager.shared.modelCategories.flatMap { cat in
+            cat.models.map { m in ModelItem(id: "\(cat.provider)_\(m.name)", title: m.name, provider: cat.provider, context: m.contextLength, source: .account, instanceId: nil) }
+        }
+    }
+    private var customItems: [ModelItem] {
+        ProviderStore.shared.providers.map { p in ModelItem(id: p.id, title: p.name, provider: p.provider, context: p.contextLength ?? 4096, source: .custom, instanceId: p.id) }
+    }
+    private var accountItemsFiltered: [ModelItem] { _search.isEmpty ? accountItems : accountItems.filter { $0.title.localizedCaseInsensitiveContains(_search) } }
+    private var customItemsFiltered: [ModelItem] { _search.isEmpty ? customItems : customItems.filter { $0.title.localizedCaseInsensitiveContains(_search) } }
+
+    @ViewBuilder
+    private func itemRow(_ item: ModelItem) -> some View {
+        HStack { Text(item.title); Spacer() }
+            .tag(item)
+            .contentShape(Rectangle())
+            .onHover { hovering in hoverModel = hovering ? item : nil }
+            .onTapGesture { selectModel(item) }
+    }
+
+    private func preselectCurrentModel() {
+        if conversation.modelSource == "instance", let inst = ProviderStore.shared.providers.first(where: { $0.id == conversation.modelInstanceId }) {
+            selectedModel = ModelItem(id: inst.id, title: inst.name, provider: inst.provider, context: inst.contextLength ?? 4096, source: .custom, instanceId: inst.id)
+        } else if !conversation.modelId.isEmpty {
+            if let m = accountItems.first(where: { $0.title == conversation.modelId }) { selectedModel = m }
+        }
+    }
+
+    private func selectModel(_ item: ModelItem) {
+        switch item.source {
+        case .account:
+            conversation.modelSource = "account"
+            conversation.modelInstanceId = ""
+            conversation.modelId = item.title
+        case .custom:
+            conversation.modelSource = "instance"
+            conversation.modelInstanceId = item.instanceId ?? ""
+            conversation.modelId = ""
+        }
+        showModelPopover = false
     }
 }
 struct CustomTextFieldStyle: TextFieldStyle {

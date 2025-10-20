@@ -36,6 +36,11 @@ struct PersistenceController {
 
     init(inMemory: Bool = false) {
         container = NSPersistentContainer(name: "gptexpir")
+        // Enable lightweight migration for schema changes (new attributes, etc.).
+        if let description = container.persistentStoreDescriptions.first {
+            description.shouldMigrateStoreAutomatically = true
+            description.shouldInferMappingModelAutomatically = true
+        }
         if inMemory {
             container.persistentStoreDescriptions.first!.url = URL(fileURLWithPath: "/dev/null")
         }
@@ -90,6 +95,85 @@ struct PersistenceController {
             let nsError = error as NSError
             fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
         }
+    }
+
+    // MARK: - Sessions (Stage 2b)
+    func ensureDefaultSession(conversation: GPTConversation) {
+        let container = self.container
+        let convID = conversation.objectID
+        let ctx = container.newBackgroundContext()
+        ctx.performAndWait {
+            do {
+                guard let conv = try? ctx.existingObject(with: convID) as? GPTConversation else { return }
+                // Load sessions for this conversation
+                let reqS: NSFetchRequest<GPTSession> = GPTSession.fetchRequest()
+                reqS.predicate = NSPredicate(format: "agent == %@", conv)
+                let existing = try ctx.fetch(reqS)
+                var session: GPTSession
+                if let first = existing.first {
+                    session = first
+                } else {
+                    session = GPTSession(title: conv.name.isEmpty ? "新会话" : conv.name, agent: conv, context: ctx)
+                }
+                // Assign session to answers missing it
+                let reqA: NSFetchRequest<GPTAnswer> = GPTAnswer.fetchRequest()
+                reqA.predicate = NSPredicate(format: "belongsTo == %@ AND session == nil", conv)
+                let answers = try ctx.fetch(reqA)
+                answers.forEach { $0.session = session }
+                try ctx.save()
+            } catch {
+                print("ensureDefaultSession error: \(error)")
+            }
+        }
+    }
+
+    func loadSessions(conversation: GPTConversation) -> [GPTSession] {
+        let viewContext = container.viewContext
+        let req: NSFetchRequest<GPTSession> = GPTSession.fetchRequest()
+        req.predicate = NSPredicate(format: "agent == %@", conversation)
+        req.sortDescriptors = [
+            NSSortDescriptor(key: "updatedAt_", ascending: false),
+            NSSortDescriptor(key: "createdAt_", ascending: false)
+        ]
+        return (try? viewContext.fetch(req)) ?? []
+    }
+
+    func createSession(conversation: GPTConversation, title: String = "新会话") -> GPTSession? {
+        let viewContext = container.viewContext
+        let session = GPTSession(title: title, agent: conversation, context: viewContext)
+        do { try viewContext.save(); return session } catch { print(error); return nil }
+    }
+
+    func rename(session: GPTSession, title: String) {
+        session.title = title
+        session.updatedAt = Date()
+        do { try session.managedObjectContext?.save() } catch { print(error) }
+    }
+
+    func archive(session: GPTSession, archived: Bool) {
+        session.archived = archived
+        session.updatedAt = Date()
+        do { try session.managedObjectContext?.save() } catch { print(error) }
+    }
+
+    // Delete a session. If moveToDefault is true, reassign its messages to the first non-archived default session; otherwise messages will be left with `session == nil` and will be assigned on next ensureDefaultSession.
+    func delete(session: GPTSession, moveToDefault: Bool = true) {
+        guard let ctx = session.managedObjectContext, let conv = session.agent else { return }
+        if moveToDefault {
+            // Find or create a destination session
+            var destination: GPTSession? = loadSessions(conversation: conv).first(where: { $0 != session && !$0.archived })
+            if destination == nil { destination = createSession(conversation: conv, title: "新会话") }
+            if let dest = destination {
+                // Reassign messages
+                let reqA: NSFetchRequest<GPTAnswer> = GPTAnswer.fetchRequest()
+                reqA.predicate = NSPredicate(format: "session == %@", session)
+                if let answers = try? ctx.fetch(reqA) {
+                    answers.forEach { $0.session = dest }
+                }
+            }
+        }
+        ctx.delete(session)
+        do { try ctx.save() } catch { print(error) }
     }
     
     func addConvasation() {

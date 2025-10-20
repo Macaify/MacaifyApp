@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CoreData
 import SwiftUI
 import AVKit
 
@@ -31,13 +32,59 @@ class ViewModel: ObservableObject, Equatable {
         self.api = api
         self.enableSpeech = enableSpeech
         synthesizer = .init()
-        print("reinit conversation \(conversation.name) \(messages.count)")
-        messages = conversation.own.map({ answer in
-            return MessageRow(isInteractingWithChatGPT: false, sendImage: "profile", sendText: answer.prompt, responseImage: "openai", responseText: answer.response, clearContextAfterThis: answer.contextClearedAfterThis)
-        })
+        // Lazy initial load with limit to avoid UI hitch when switching bots
+        messages = []
         api.withContext = conversation.withContext
         updateAPIHistory()
         startObserve()
+    }
+
+    private let initialLoadLimit: Int = 80
+
+    private var didLoadHistory: Bool = false
+
+    func loadInitialMessagesAsync(limit: Int? = nil) async {
+        if didLoadHistory { return }
+        let reqLimit = limit ?? initialLoadLimit
+        let convID = conversation.objectID
+        let container = PersistenceController.shared.container
+        do {
+            let rows: [MessageRow] = try await withCheckedThrowingContinuation { cont in
+                let ctx = container.newBackgroundContext()
+                ctx.perform {
+                    do {
+                        let convBG = try ctx.existingObject(with: convID) as! GPTConversation
+                        let req: NSFetchRequest<GPTAnswer> = GPTAnswer.fetchRequest()
+                        req.predicate = NSPredicate(format: "belongsTo == %@", convBG)
+                        req.sortDescriptors = [NSSortDescriptor(key: "timestamp_", ascending: false)]
+                        if reqLimit > 0 { req.fetchLimit = reqLimit }
+                        let fetched = try ctx.fetch(req)
+                        let answers = fetched.reversed()
+                        let mapped = answers.map { ans in
+                            MessageRow(isInteractingWithChatGPT: false,
+                                       sendImage: "profile",
+                                       sendText: ans.prompt,
+                                       responseImage: "openai",
+                                       responseText: ans.response,
+                                       responseError: nil,
+                                       clearContextAfterThis: ans.contextClearedAfterThis)
+                        }
+                        cont.resume(returning: mapped)
+                    } catch {
+                        cont.resume(throwing: error)
+                    }
+                }
+            }
+            await MainActor.run {
+                self.messages = rows
+                self.didLoadHistory = true
+            }
+        } catch {
+            await MainActor.run {
+                self.messages = []
+                self.didLoadHistory = true
+            }
+        }
     }
     
     func startObserve() {
@@ -59,7 +106,7 @@ class ViewModel: ObservableObject, Equatable {
     func sendTapped() async {
         let text = inputMessage
         inputMessage = ""
-        print("withContext ? ", conversation.withContext)
+//        print("withContext ? ", conversation.withContext)
         api.withContext = conversation.withContext
         api.systemPrompt = conversation.prompt
         sendTask = Task { @MainActor in
@@ -116,22 +163,26 @@ class ViewModel: ObservableObject, Equatable {
         
         do {
             let stream = try await api.chatsStream(text: text)
-//            let stream = try await api.sendMessageStream(text: text)
-            for try await text in stream {
-                if interupted {
-                    interupted = false
-                    break
+            let throttle: Double = 0.12
+            var lastUpdate: Double = 0
+            for try await chunk in stream {
+                if interupted { interupted = false; break }
+                let delta = chunk.choices.first?.delta.content ?? ""
+                guard !delta.isEmpty else { continue }
+                streamText += delta
+                let now = Date.timeIntervalSinceReferenceDate
+                if now - lastUpdate > throttle {
+                    lastUpdate = now
+                    messageRow.responseText = streamText
+                    self.messages[self.messages.count - 1] = messageRow
                 }
-                print("get text", text)
-//                streamText += text
-                streamText += text.choices.first?.delta.content ?? ""
-                messageRow.responseText = streamText
-//                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                self.messages[self.messages.count - 1] = messageRow
             }
+            // Final update
+            messageRow.responseText = streamText
+            self.messages[self.messages.count - 1] = messageRow
         } catch {
-            print(error)
-            messageRow.responseError = error.localizedDescription
+//        print(error)
+        messageRow.responseError = error.localizedDescription
         }
         
         messageRow.isInteractingWithChatGPT = false

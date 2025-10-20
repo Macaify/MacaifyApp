@@ -93,7 +93,6 @@ class ConversationViewModel: ObservableObject {
             return viewModel
         } else {
             let viewModel = ViewModel(conversation: conversation, api: api, enableSpeech: useVoice)
-            print("主动 init")
             viewModels[id] = viewModel
             return viewModel
         }
@@ -101,6 +100,7 @@ class ConversationViewModel: ObservableObject {
     
     func loadCommands() {
         conversations = PersistenceController.shared.loadConversations()
+        applySavedOrder()
         updateSelectedIndex()
         print("CommandStore loadCommands", conversations.count)
     }
@@ -128,12 +128,76 @@ class ConversationViewModel: ObservableObject {
             selectedItemIndex = -1
         }
     }
+
+    // MARK: - Reordering support
+    func moveCommands(from source: IndexSet, to destination: Int) {
+        conversations.move(fromOffsets: source, toOffset: destination)
+        persistOrder()
+    }
+
+    private func persistOrder() {
+        let ids = conversations.map { $0.id.uuidString }
+        Defaults[.conversationOrder] = ids
+    }
+
+    private func applySavedOrder() {
+        let saved = Defaults[.conversationOrder]
+        guard !saved.isEmpty else { return }
+        let indexMap = Dictionary(uniqueKeysWithValues: saved.enumerated().map { ($1, $0) })
+        conversations.sort { a, b in
+            let ia = indexMap[a.id.uuidString] ?? Int.max
+            let ib = indexMap[b.id.uuidString] ?? Int.max
+            if ia != ib { return ia < ib }
+            return a.timestamp > b.timestamp
+        }
+    }
 }
 
 extension GPTConversation {
     
     var API: ChatGPTAPI {
-        return ChatGPTAPI(apiKey: Defaults[.apiKey], model: ModelSelectionManager.shared.getSelectedModelId(), provider: Defaults[.selectedProvider], maxToken: Defaults[.maxToken], systemPrompt: prompt, temperature: 0.5, baseURL: Defaults[.proxyAddress])
+        // Resolve source and model for this conversation
+        var modelId = ModelSelectionManager.shared.getSelectedModelId()
+        var provider = Defaults[.selectedProvider]
+        var apiKey = Defaults[.apiKey]
+        var baseURL = Defaults[.proxyAddress]
+        var maxTok = Defaults[.maxToken]
+
+        if modelSource == "instance", let inst = ProviderStore.shared.providers.first(where: { $0.id == modelInstanceId }), let token = ProviderStore.shared.token(for: inst.id) {
+            // Per-bot custom instance
+            modelId = inst.modelId
+            provider = inst.provider
+            apiKey = token
+            baseURL = inst.baseURL
+            if let ctx = inst.contextLength, ctx > 0 { maxTok = ctx }
+        } else {
+            // Use bot-specific account model if specified; otherwise fallback to global defaults
+            if modelSource == "account" && !modelId.isEmpty {
+                if let info = providerForAccountModel(modelId) {
+                    provider = info.provider
+                    if info.context > 0 { maxTok = info.context }
+                }
+            } else if Defaults[.defaultSource] == "provider" {
+                let instanceId = Defaults[.selectedProviderInstanceId]
+                if let inst = ProviderStore.shared.providers.first(where: { $0.id == instanceId }), let token = ProviderStore.shared.token(for: inst.id) {
+                    modelId = inst.modelId
+                    provider = inst.provider
+                    apiKey = token
+                    baseURL = inst.baseURL
+                    if let ctx = inst.contextLength, ctx > 0 { maxTok = ctx }
+                }
+            }
+        }
+        return ChatGPTAPI(apiKey: apiKey, model: modelId, provider: provider, maxToken: maxTok, systemPrompt: prompt, temperature: 0.5, baseURL: baseURL)
+    }
+
+    private func providerForAccountModel(_ modelName: String) -> (provider: String, context: Int)? {
+        for cat in LLMModelsManager.shared.modelCategories {
+            if let m = cat.models.first(where: { $0.name == modelName }) {
+                return (cat.provider, m.contextLength)
+            }
+        }
+        return nil
     }
     
     var shortcutDescription: String {

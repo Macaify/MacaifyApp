@@ -8,6 +8,7 @@
 import SwiftUI
 import AppKit
 import AppUpdater
+import BetterAuth
 //import FirebaseCore
 
 @main
@@ -26,18 +27,20 @@ struct XCAChatGPTMacApp: App {
     @StateObject var updater = AppUpdaterHelper.shared.updater
     
     @AppStorage("selectedLanguage") var userDefaultsSelectedLanguage: String?
+    
+    @StateObject private var authClient = BetterAuthClient(baseURL: URL(string: "https://dash.macaify.com")!)
 
     var body: some Scene {
         windowView
         menuView
+        settingsView
     }
 
     private var windowView: some Scene {
         WindowGroup {
-            EmptyView()
-                .frame(width: 0, height: 0)
+            MainSplitView()
+                .frame(minWidth: 920, minHeight: 600)
         }
-        .windowResizability(.contentSize)
     }
     @State private var dots = ""
     @State var menuAnimateTimer: Timer? = nil
@@ -137,6 +140,13 @@ struct XCAChatGPTMacApp: App {
         .menuBarExtraStyle(.menu)
         .environment(\.locale, .init(identifier: userDefaultsSelectedLanguage ?? "en"))
     }
+
+    private var settingsView: some Scene {
+        Settings {
+            StandardSettingsView()
+                .environmentObject(authClient)
+        }
+    }
 }
 
 @MainActor
@@ -144,7 +154,7 @@ final class AppState: ObservableObject {
     init() {
         HotKeyManager.initHotKeys()
         DispatchQueue(label: "EmojiManager").async {
-            EmojiManager.shared.emojis
+            let _ = EmojiManager.shared.emojis
         }
     }
 }
@@ -169,7 +179,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         AppUpdaterHelper.shared.initialize()
         globalMonitor.start()
         globalMonitor.updateModifier(appShortcutKey())
-        MainWindowController.shared.showWindow()
+        // Using SwiftUI WindowGroup as main window (MainSplitView)
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         print("applicationShouldTerminateAfterLastWindowClosed")
@@ -179,7 +189,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("log-DidReceiveMemoryWarning")
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
-        MainWindowController.shared.showWindow()
+        if let w = NSApp.windows.first { w.makeKeyAndOrderFront(nil) }
+        NSApp.activate(ignoringOtherApps: true)
         return true
     }
 }
