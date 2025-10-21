@@ -6,21 +6,40 @@ struct DefaultsSettingsView: View {
     @Default(.launchAtLogin) private var launchAtLogin
 
     var body: some View {
-        Form {
-            Section(String(localized: "通用")) {
+        VStack(alignment: .leading, spacing: SettingsTokens.spacing) {
+            GroupBox {
                 Toggle(String(localized: "开机启动"), isOn: $launchAtLogin)
+            } label: {
+                Label(String(localized: "通用"), systemImage: "gearshape")
             }
-            Section(String(localized: "快捷键")) {
+
+            GroupBox {
                 AppShortcuts()
+            } label: {
+                Label(String(localized: "快捷键"), systemImage: "command")
             }
-            Section(String(localized: "语言与更新")) {
-                LanguageOptions()
-                AppUpdaterLink().environmentObject(AppUpdaterHelper.shared.updater)
+
+            GroupBox {
+                VStack(alignment: .leading, spacing: 8) {
+                    LanguageOptions()
+                    AppUpdaterLink().environmentObject(AppUpdaterHelper.shared.updater)
+                }
+            } label: {
+                Label(String(localized: "语言与更新"), systemImage: "globe")
             }
-            Section(String(localized: "最大 Token")) {
-                Stepper(value: $maxToken, in: 256...200000, step: 256) { Text("\(maxToken)") }
+
+            GroupBox {
+                Stepper(value: $maxToken, in: 256...200000, step: 256) {
+                    HStack {
+                        Text(String(localized: "最大 Token"))
+                        Spacer()
+                        Text("\(maxToken)").foregroundStyle(.secondary)
+                    }
+                }
+            } label: {
+                Label(String(localized: "高级"), systemImage: "slider.horizontal.3")
             }
         }
-        .formStyle(.grouped)
+        .groupBoxStyle(CardGroupBoxStyle())
     }
 }

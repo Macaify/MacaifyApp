@@ -9,6 +9,7 @@ import SwiftUI
 import AppKit
 import AppUpdater
 import BetterAuth
+import BetterAuthBrowserOTT
 //import FirebaseCore
 
 @main
@@ -28,7 +29,19 @@ struct XCAChatGPTMacApp: App {
     
     @AppStorage("selectedLanguage") var userDefaultsSelectedLanguage: String?
     
-    @StateObject private var authClient = BetterAuthClient(baseURL: URL(string: "https://dash.macaify.com")!)
+    @StateObject private var authClient = BetterAuthClient(
+        baseURL: URL(string: "http://localhost:3000")!,
+//        baseURL: URL(string: "https://dash.macaify.com")!,
+        plugins: [
+            // Open auth URL in the default browser and wait for deep link callback
+            BrowserOTTPlugin(decideOpen: { url, _ in
+                #if os(macOS)
+                NSWorkspace.shared.open(url)
+                #endif
+                return true
+            })
+        ]
+    )
 
     var body: some Scene {
         windowView
@@ -40,6 +53,14 @@ struct XCAChatGPTMacApp: App {
         WindowGroup {
             MainSplitView()
                 .frame(minWidth: 920, minHeight: 600)
+                .onOpenURL { url in
+                    // Forward deep links to the OTT plugin
+                    BrowserOTTDeepLinkCenter.resume(with: url)
+                }
+                .task {
+                    // Load initial session on app start
+                    await authClient.session.refreshSession()
+                }
         }
     }
     @State private var dots = ""
@@ -145,6 +166,12 @@ struct XCAChatGPTMacApp: App {
         Settings {
             StandardSettingsView()
                 .environmentObject(authClient)
+                .onOpenURL { url in
+                    BrowserOTTDeepLinkCenter.resume(with: url)
+                }
+                .task {
+                    await authClient.session.refreshSession()
+                }
         }
     }
 }
