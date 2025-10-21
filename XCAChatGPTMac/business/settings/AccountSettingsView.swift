@@ -121,8 +121,12 @@ struct AccountSettingsView: View {
                 if authClient.session.data?.user != nil {
                     Button(String(localized: "退出登录")) {
                         Task {
+                            // 尝试通知后端登出，但无论成功与否，都清除本地令牌并刷新会话
                             do { _ = try await authClient.signOut() } catch {}
+                            await TokenAuth.shared.clear()
                             await authClient.session.refreshSession()
+                            // 触发全局通知，让其他窗口的 BetterAuthClient 也刷新
+                            NotificationCenter.default.post(name: .init("BetterAuthSignedOut"), object: nil)
                         }
                     }
                 } else {

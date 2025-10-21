@@ -28,9 +28,25 @@ struct ErrorRootResponse: Decodable {
     let error: ErrorResponse
 }
 
+struct ErrorContext: Decodable {
+    let current_plan: String?
+    let required_plan: String?
+    let model_id: String?
+    let alternatives: [String]?
+    let upgrade_url: String?
+}
+
+// Fallback shape when backend returns {"success": false, "error": "...", ...}
+struct ErrorStringRootResponse: Decodable {
+    let success: Bool?
+    let error: String
+}
+
 struct ErrorResponse: Decodable {
+    let code: String?
     let message: String
     let type: String?
+    let context: ErrorContext?
 }
 
 struct StreamCompletionResponse: Decodable {
@@ -62,4 +78,3 @@ struct StreamMessage: Decodable {
     let role: String?
     let content: String?
 }
-

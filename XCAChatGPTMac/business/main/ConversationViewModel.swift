@@ -162,6 +162,7 @@ extension GPTConversation {
         var apiKey = Defaults[.apiKey]
         var baseURL = Defaults[.proxyAddress]
         var maxTok = Defaults[.maxToken]
+        var useAccountGateway = false
 
         if modelSource == "instance", let inst = ProviderStore.shared.providers.first(where: { $0.id == modelInstanceId }), let token = ProviderStore.shared.token(for: inst.id) {
             // Per-bot custom instance
@@ -177,6 +178,7 @@ extension GPTConversation {
                     provider = info.provider
                     if info.context > 0 { maxTok = info.context }
                 }
+                useAccountGateway = true
             } else if Defaults[.defaultSource] == "provider" {
                 let instanceId = Defaults[.selectedProviderInstanceId]
                 if let inst = ProviderStore.shared.providers.first(where: { $0.id == instanceId }), let token = ProviderStore.shared.token(for: inst.id) {
@@ -186,9 +188,12 @@ extension GPTConversation {
                     baseURL = inst.baseURL
                     if let ctx = inst.contextLength, ctx > 0 { maxTok = ctx }
                 }
+            } else {
+                // Default source == account
+                useAccountGateway = true
             }
         }
-        return ChatGPTAPI(apiKey: apiKey, model: modelId, provider: provider, maxToken: maxTok, systemPrompt: prompt, temperature: 0.5, baseURL: baseURL)
+        return ChatGPTAPI(apiKey: apiKey, model: modelId, provider: provider, maxToken: maxTok, systemPrompt: prompt, temperature: 0.5, baseURL: baseURL, withContext: withContext, useAccountGateway: useAccountGateway)
     }
 
     private func providerForAccountModel(_ modelName: String) -> (provider: String, context: Int)? {

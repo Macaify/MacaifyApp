@@ -59,6 +59,10 @@ final class ChatSessionViewModel: ObservableObject {
     @Published var input: String = ""
     @Published var isSending: Bool = false
     @Published var error: String? = nil
+    @Published var errorPrimaryTitle: String? = nil
+    @Published var errorSecondaryTitle: String? = nil
+    private var errorPrimaryAction: (() -> Void)? = nil
+    private var errorSecondaryAction: (() -> Void)? = nil
     @Published var modelLabel: String = ""
     @Published var contextSnippet: String? = nil
     @Published var contextPinned: Bool = true
@@ -72,7 +76,7 @@ final class ChatSessionViewModel: ObservableObject {
     private var conv: GPTConversation
     private let encoder = GPTEncoder()
     @Published var configHint: String? = nil
-    private struct APISendConfig { let provider: String; let model: String; let baseURL: String; let keyMasked: String; let withContext: Bool; let systemPromptLen: Int; let convId: UUID }
+    private struct APISendConfig { let provider: String; let model: String; let baseURL: String; let keyMasked: String; let withContext: Bool; let systemPromptLen: Int; let convId: UUID; let isAccount: Bool }
     private var lastConfig: APISendConfig? = nil
 
     init(conversation: GPTConversation) {
@@ -95,13 +99,39 @@ final class ChatSessionViewModel: ObservableObject {
         Task { await loadHistory() }
     }
 
+    private func setError(_ message: String, primaryTitle: String? = nil, secondaryTitle: String? = nil, primary: (() -> Void)? = nil, secondary: (() -> Void)? = nil) {
+        self.error = message
+        self.errorPrimaryTitle = primaryTitle
+        self.errorSecondaryTitle = secondaryTitle
+        self.errorPrimaryAction = primary
+        self.errorSecondaryAction = secondary
+    }
+
+    private func clearError() {
+        setError("")
+        self.error = nil
+    }
+
+    private func switchToAccountDefault() {
+        let defModel = Defaults[.selectedModelId]
+        var updated = conv
+        updated.modelSource = "account"
+        updated.modelId = defModel
+        updated.save()
+        updateConversation(updated)
+    }
+    private func openPricing() {
+        if let url = URL(string: "https://macaify.com/pricing") { NSWorkspace.shared.open(url) }
+    }
+
     private static func computeHint(for conv: GPTConversation, cfg: APISendConfig) -> String? {
         var hints: [String] = []
         if conv.modelSource == "instance" {
             if cfg.keyMasked.isEmpty { hints.append("该模型实例未配置 Token") }
             if cfg.provider != "openai" && cfg.baseURL.trimmingCharacters(in: .whitespaces).isEmpty { hints.append("该实例需要设置 Base URL") }
         } else {
-            if cfg.keyMasked.isEmpty { hints.append("未设置账户 API Key") }
+            // 账户模型走网关，不再需要本地 API Key 提示
+            if !cfg.isAccount && cfg.keyMasked.isEmpty { hints.append("未设置账户 API Key") }
         }
         return hints.isEmpty ? nil : hints.joined(separator: "；") + "。"
     }
@@ -112,6 +142,7 @@ final class ChatSessionViewModel: ObservableObject {
         var provider = "openai"
         var baseURL = ""
         var key: String = ""
+        var isAccount = false
         let source = conv.modelSource
 
         if source == "instance", let inst = ProviderStore.shared.providers.first(where: { $0.id == conv.modelInstanceId }) {
@@ -124,14 +155,15 @@ final class ChatSessionViewModel: ObservableObject {
             let selectedModel = conv.modelId.isEmpty ? Defaults[.selectedModelId] : conv.modelId
             model = selectedModel.isEmpty ? (LLMModelsManager.shared.modelCategories.first?.models.first?.id ?? "gpt-4o-mini") : selectedModel
             provider = Defaults[.selectedProvider].isEmpty ? "openai" : Defaults[.selectedProvider]
-            let useProxy = UserDefaults.standard.object(forKey: "useProxy") as? Bool ?? false
-            baseURL = useProxy ? (UserDefaults.standard.object(forKey: "proxyAddress") as? String ?? "") : ""
-            key = APIKeyManager.shared.key ?? Defaults[.apiKey]
+            // 账户模型：使用账户网关 + Bearer，不再读取本地 API Key
+            isAccount = true
+            baseURL = ""
+            key = ""
         }
 
-        let api = ChatGPTAPI(apiKey: key, model: model, provider: provider, maxToken: maxToken, systemPrompt: conv.prompt, temperature: 0.5, baseURL: baseURL, withContext: conv.withContext)
+        let api = ChatGPTAPI(apiKey: key, model: model, provider: provider, maxToken: maxToken, systemPrompt: conv.prompt, temperature: 0.5, baseURL: baseURL, withContext: conv.withContext, useAccountGateway: isAccount)
         let masked = key.isEmpty ? "" : String(repeating: "*", count: max(0, key.count - 6)) + key.suffix(6)
-        let cfg = APISendConfig(provider: provider, model: model, baseURL: baseURL, keyMasked: masked, withContext: conv.withContext, systemPromptLen: conv.prompt.count, convId: conv.id)
+        let cfg = APISendConfig(provider: provider, model: model, baseURL: baseURL, keyMasked: masked, withContext: conv.withContext, systemPromptLen: conv.prompt.count, convId: conv.id, isAccount: isAccount)
 
         let hintText = computeHint(for: conv, cfg: cfg)
         return (api, cfg, hintText)
@@ -285,10 +317,25 @@ final class ChatSessionViewModel: ObservableObject {
             print("[Chat] stream error:", error)
             if let idx = messages.lastIndex(where: { $0.isStreaming }) { messages.remove(at: idx) }
             if let idx = allMessages.lastIndex(where: { $0.isStreaming }) { allMessages.remove(at: idx) }
-            let message = "Error: \(error.localizedDescription)"
+            let message: String
+            if let apiErr = error as? ChatGPTAPI.ChatAPIError {
+                message = apiErr.localizedDescription
+                switch apiErr {
+                case .planNotAllowed, .quotaExceeded, .trialExpired:
+                    setError(message, primaryTitle: "升级", secondaryTitle: "切换默认模型", primary: { [weak self] in self?.openPricing() }, secondary: { [weak self] in self?.switchToAccountDefault() })
+                case .unauthorized, .notLoggedIn:
+                    setError(message, primaryTitle: "去登录", secondaryTitle: nil, primary: {
+                        if #available(macOS 13.0, *) { NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) }
+                    })
+                default:
+                    setError(message)
+                }
+            } else {
+                message = "Error: \(error.localizedDescription)"
+                setError(message)
+            }
             messages.append(.init(sender: .assistant, text: message))
             allMessages.append(.init(sender: .assistant, text: message))
-            self.error = message
         }
         if !sessions.isEmpty { sessions[selectedSession].end = allMessages.count }
         isSending = false
@@ -435,10 +482,25 @@ final class ChatSessionViewModel: ObservableObject {
             print("[Chat] regenerate error:", error)
             if let idx = messages.lastIndex(where: { $0.isStreaming }) { messages.remove(at: idx) }
             if let idx = allMessages.lastIndex(where: { $0.isStreaming }) { allMessages.remove(at: idx) }
-            let message = "Error: \(error.localizedDescription)"
+            let message: String
+            if let apiErr = error as? ChatGPTAPI.ChatAPIError {
+                message = apiErr.localizedDescription
+                switch apiErr {
+                case .planNotAllowed, .quotaExceeded, .trialExpired:
+                    setError(message, primaryTitle: "升级", secondaryTitle: "切换默认模型", primary: { [weak self] in self?.openPricing() }, secondary: { [weak self] in self?.switchToAccountDefault() })
+                case .unauthorized, .notLoggedIn:
+                    setError(message, primaryTitle: "去登录", secondaryTitle: nil, primary: {
+                        if #available(macOS 13.0, *) { NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) }
+                    })
+                default:
+                    setError(message)
+                }
+            } else {
+                message = "Error: \(error.localizedDescription)"
+                setError(message)
+            }
             messages.append(.init(sender: .assistant, text: message))
             allMessages.append(.init(sender: .assistant, text: message))
-            self.error = message
         }
         if !sessions.isEmpty { sessions[selectedSession].end = allMessages.count }
         isSending = false
@@ -521,6 +583,11 @@ final class ChatSessionViewModel: ObservableObject {
         messages.removeAll()
         api.deleteHistoryList()
     }
+}
+
+extension ChatSessionViewModel {
+    func performPrimaryErrorAction() { errorPrimaryAction?(); errorPrimaryAction = nil }
+    func performSecondaryErrorAction() { errorSecondaryAction?(); errorSecondaryAction = nil }
 }
 
 // MARK: - UI
@@ -823,6 +890,21 @@ struct ChatDetailView: View {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.white)
                     Text(error).foregroundColor(.white).lineLimit(2)
                     Spacer()
+                    if let secondary = viewModel.errorSecondaryTitle {
+                        Button(secondary) {
+                            // fire and clear
+                            viewModel.performSecondaryErrorAction()
+                        }.buttonStyle(.bordered)
+                            .tint(.white)
+                            .foregroundColor(.red)
+                    }
+                    if let primary = viewModel.errorPrimaryTitle {
+                        Button(primary) {
+                            viewModel.performPrimaryErrorAction()
+                        }.buttonStyle(.borderedProminent)
+                            .tint(.white)
+                            .foregroundColor(.red)
+                    }
                     Button(action: { withAnimation { viewModel.error = nil } }) {
                         Image(systemName: "xmark.circle.fill").foregroundColor(.white.opacity(0.9))
                     }.buttonStyle(.plain)

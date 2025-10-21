@@ -8,6 +8,9 @@
 import Foundation
 import GPTEncoder
 import OpenAI
+#if canImport(BetterAuth)
+import BetterAuth
+#endif
 
 class ChatGPTAPI: @unchecked Sendable {
     
@@ -26,27 +29,22 @@ class ChatGPTAPI: @unchecked Sendable {
     var withContext: Bool
     
     private var PORTKEY_BASE_URL = "https://aigateway.macaify.com"
+    private let ACCOUNT_GATEWAY_BASE_URL = "http://localhost:3000/api/ai"
 
     private var baseURL: String
+    private var useAccountGateway: Bool
     private var realBaseURL: String {
         // provider 是 openai，走 openai 或 baseURL
         // baseURL 为空或 provider 不是 openai，走 portkey
-        if provider == "openai" {
-            baseURL.isEmpty ? "https://api.openai.com" : baseURL
+        if useAccountGateway {
+            return ACCOUNT_GATEWAY_BASE_URL
+        } else if provider == "openai" {
+            return baseURL.isEmpty ? "https://api.openai.com" : baseURL
         } else {
-            PORTKEY_BASE_URL
+            return PORTKEY_BASE_URL
         }
     }
     private let urlSession = URLSession.shared
-    private var urlRequest: URLRequest {
-        get {
-            let url = URL(string: "\(realBaseURL)/v1/chat/completions")!
-            var urlRequest = URLRequest(url: url)
-            urlRequest.httpMethod = "POST"
-            headers.forEach {  urlRequest.setValue($1, forHTTPHeaderField: $0) }
-            return urlRequest
-        }
-    }
     
     var systemPrompt: String
     
@@ -64,27 +62,117 @@ class ChatGPTAPI: @unchecked Sendable {
     
     private var provider: String
     
-    private var headers: [String: String] {
-        [
-            "Content-Type": "application/json",
-            "Authorization": "Bearer \(apiKey)",
-            "x-portkey-provider": provider,
-            "x-portkey-custom-host": baseURL
-        ]
+    enum ChatAPIError: LocalizedError {
+        case notLoggedIn
+        case unauthorized
+        case forbidden
+        case tooManyRequests
+        case invalidResponse
+        case serverError(code: Int, message: String)
+        case planNotAllowed(model: String?, currentPlan: String?, requiredPlan: String?)
+        case quotaExceeded(currentPlan: String?)
+        case trialExpired
+        case accountAuthUnavailable
+        case network(error: Error)
+
+        var errorDescription: String? {
+            switch self {
+            case .notLoggedIn:
+                return "未登录，请先在设置中登录账号。"
+            case .unauthorized:
+                return "未授权（401），请重新登录。"
+            case .forbidden:
+                return "无权限（403），请检查账户权限。"
+            case .tooManyRequests:
+                return "请求过多（429），请稍后再试。"
+            case .invalidResponse:
+                return "无效响应。"
+            case let .serverError(code, message):
+                return "服务错误（\(code)）：\(message)"
+            case let .planNotAllowed(model, current, required):
+                var text = "当前会员等级不支持该模型"
+                if let current { text += "（\(current)）" }
+                if let model { text += "：\(model)" }
+                if let required { text += "（需要 \(required)）" }
+                return text
+            case let .quotaExceeded(current):
+                return "本期配额已用尽\(current != nil ? "（\(current!)）" : "")。"
+            case .trialExpired:
+                return "试用已到期。"
+            case .accountAuthUnavailable:
+                return "该平台不支持账户登录。"
+            case let .network(error):
+                return error.localizedDescription
+            }
+        }
+    }
+
+    private func mapServerError(status: Int, code: String?, message: String, context: ErrorContext?) -> ChatAPIError {
+        if let code = code {
+            switch code {
+            case "membership.plan_not_allowed":
+                return .planNotAllowed(model: context?.model_id, currentPlan: context?.current_plan, requiredPlan: context?.required_plan)
+            case "membership.quota_exceeded":
+                return .quotaExceeded(currentPlan: context?.current_plan)
+            case "membership.trial_expired":
+                return .trialExpired
+            case "auth.not_logged_in":
+                return .notLoggedIn
+            case "auth.unauthorized":
+                return .unauthorized
+            case "rate.limited":
+                return .tooManyRequests
+            default:
+                break
+            }
+        }
+        // Fallback by status
+        switch status {
+        case 401: return .unauthorized
+        case 403: return .forbidden
+        case 429: return .tooManyRequests
+        default: return .serverError(code: status, message: message)
+        }
+    }
+
+    private func buildHeaders() async throws -> [String: String] {
+        if useAccountGateway {
+            // Bearer from BetterAuth TokenAuth (if available)
+            #if canImport(BetterAuth)
+            let bearer = await TokenAuth.shared.getAuthorizationHeader() ?? ""
+            guard !bearer.isEmpty else { throw ChatAPIError.notLoggedIn }
+            #else
+            throw ChatAPIError.accountAuthUnavailable
+            #endif
+            return [
+                "Content-Type": "application/json",
+                "Authorization": bearer
+            ]
+        } else {
+            return [
+                "Content-Type": "application/json",
+                "Authorization": "Bearer \(apiKey)",
+                "x-portkey-provider": provider,
+                "x-portkey-custom-host": baseURL
+            ]
+        }
     }
     
     // MARK: - paw/openai
-    private var configuration: OpenAI.Configuration {
-        .init(token: apiKey, baseURL: realBaseURL, headers: headers)
-    }
-    
-    var openai: OpenAI {
-        return OpenAI(configuration: configuration)
+    // Build a client with dynamic headers (Bearer may come from TokenAuth)
+    private func buildOpenAI() async throws -> OpenAI {
+        let headers = try await buildHeaders()
+        let cfg = OpenAI.Configuration(
+            token: useAccountGateway ? "" : apiKey,
+            baseURL: realBaseURL,
+            headers: headers
+        )
+        return OpenAI(configuration: cfg)
     }
     
     private var lastTask: URLSessionDataTask? = nil
 
-    init(apiKey: String, model: String = "gpt-4o-mini", provider: String = "openai", maxToken: Int, systemPrompt: String = "You are a helpful assistant", temperature: Double = 0, baseURL: String = "", withContext: Bool = true) {
+    init(apiKey: String, model: String = "gpt-4o-mini", provider: String = "openai", maxToken: Int, systemPrompt: String = "You are a helpful assistant", temperature: Double = 0, baseURL: String = "", withContext: Bool = true, useAccountGateway: Bool = false) {
         self.apiKey = apiKey
         self.model = model
         self.systemPrompt = systemPrompt
@@ -93,6 +181,7 @@ class ChatGPTAPI: @unchecked Sendable {
         self.withContext = withContext
         self.provider = provider
         self.baseURL = baseURL
+        self.useAccountGateway = useAccountGateway
     }
     
     func disableProxy() {
@@ -145,29 +234,105 @@ class ChatGPTAPI: @unchecked Sendable {
         return try JSONEncoder().encode(request)
     }
     
+    // Extract pure JSON string from a line that may start with custom prefix like "jsonData "
+    private func sanitizeJSONText(_ text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("jsonData ") {
+            return String(trimmed.dropFirst("jsonData ".count))
+        }
+        return trimmed
+    }
+    
     private func appendToHistoryList(userText: String, responseText: String) {
         self.historyList.append(.init(role: "user", content: userText))
         self.historyList.append(.init(role: "assistant", content: responseText))
     }
     
     func chatsStream(text: String) async throws -> AsyncThrowingStream<ChatStreamResult, Error> {
-        let msgs = generateMessages(from: text).map {
-            ChatQuery.ChatCompletionMessageParam(role: .init(rawValue: $0.role) ?? .user, content: $0.content)!
+        // Build request
+        let url = URL(string: "\(realBaseURL)/v1/chat/completions")!
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        let headers = try await buildHeaders()
+        headers.forEach { urlRequest.setValue($1, forHTTPHeaderField: $0) }
+        urlRequest.httpBody = try jsonBody(text: text)
+
+        // Start stream
+        let (result, response): (URLSession.AsyncBytes, URLResponse)
+        do {
+            (result, response) = try await urlSession.bytes(for: urlRequest)
+        } catch {
+            throw ChatAPIError.network(error: error)
         }
 
-        let upstream: AsyncThrowingStream<ChatStreamResult, Error> = openai.chatsStream(query: .init(messages: msgs, model: model, temperature: 0.5, stream: true))
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ChatAPIError.invalidResponse
+        }
+        // Non-2xx: collect payload and map structured error
+        guard 200...299 ~= httpResponse.statusCode else {
+            var raw = ""
+            for try await line in result.lines { raw += line }
+            raw = sanitizeJSONText(raw)
+            var message = ""
+            var code: String? = nil
+            var ctx: ErrorContext? = nil
+            if let data = raw.data(using: .utf8), let er = try? jsonDecoder.decode(ErrorRootResponse.self, from: data) {
+                message = er.error.message
+                code = er.error.code
+                ctx = er.error.context
+            } else if let data = raw.data(using: .utf8), let er2 = try? jsonDecoder.decode(ErrorStringRootResponse.self, from: data) {
+                message = er2.error
+            } else {
+                message = raw
+            }
+            throw mapServerError(status: httpResponse.statusCode, code: code, message: message, context: ctx)
+        }
 
-        // Wrap upstream to accumulate content and persist history when finished
+        // 2xx: parse SSE
         return AsyncThrowingStream<ChatStreamResult, Error> { continuation in
             Task(priority: .userInitiated) { [weak self] in
                 guard let self else { return }
                 do {
                     var responseText = ""
-                    for try await chunk in upstream {
-                        if let delta = chunk.choices.first?.delta.content, !delta.isEmpty {
-                            responseText += delta
+                    var firstNonEmptySeen = false
+                    var sseErrorMode = false
+                    for try await raw in result.lines {
+                        let line = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !line.isEmpty else { continue }
+                        if !firstNonEmptySeen {
+                            firstNonEmptySeen = true
+                            // If plain JSON returned mistakenly
+                            if line.hasPrefix("{") || line.hasPrefix("jsonData ") {
+                                let body = sanitizeJSONText(line)
+                                if let data = body.data(using: .utf8) {
+                                    if let er = try? self.jsonDecoder.decode(ErrorRootResponse.self, from: data) {
+                                        throw self.mapServerError(status: 200, code: er.error.code, message: er.error.message, context: er.error.context)
+                                    } else if let er2 = try? self.jsonDecoder.decode(ErrorStringRootResponse.self, from: data) {
+                                        throw self.mapServerError(status: 200, code: nil, message: er2.error, context: nil)
+                                    }
+                                }
+                                throw ChatAPIError.invalidResponse
+                            }
                         }
-                        continuation.yield(chunk)
+                        if line.hasPrefix("event:") && line.contains("error") { sseErrorMode = true; continue }
+                        if sseErrorMode, line.hasPrefix("data: ") {
+                            let body = sanitizeJSONText(String(line.dropFirst(6)))
+                            if let data = body.data(using: .utf8) {
+                                if let er = try? self.jsonDecoder.decode(ErrorRootResponse.self, from: data) {
+                                    throw self.mapServerError(status: 200, code: er.error.code, message: er.error.message, context: er.error.context)
+                                } else if let er2 = try? self.jsonDecoder.decode(ErrorStringRootResponse.self, from: data) {
+                                    throw self.mapServerError(status: 200, code: nil, message: er2.error, context: nil)
+                                }
+                            }
+                            throw ChatAPIError.invalidResponse
+                        }
+                        if line.hasPrefix("data: ") {
+                            let body = String(line.dropFirst(6))
+                            if let data = body.data(using: .utf8), let chunk = try? self.jsonDecoder.decode(ChatStreamResult.self, from: data) {
+                                if let delta = chunk.choices.first?.delta.content, !delta.isEmpty { responseText += delta }
+                                continuation.yield(chunk)
+                            }
+                        }
                     }
                     self.appendToHistoryList(userText: text, responseText: responseText)
                     continuation.finish()
@@ -180,31 +345,44 @@ class ChatGPTAPI: @unchecked Sendable {
 
     func sendMessageStream(text: String) async throws -> AsyncThrowingStream<String, Error> {
         print("send message stream", model, text)
-        var urlRequest = self.urlRequest
+        let url = URL(string: "\(realBaseURL)/v1/chat/completions")!
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        let headers = try await buildHeaders()
+        headers.forEach { urlRequest.setValue($1, forHTTPHeaderField: $0) }
         urlRequest.httpBody = try jsonBody(text: text)
         print("urlRequest", urlRequest, headers, urlRequest.httpBody.map { String(decoding: $0, as: UTF8.self) })
 
-        let (result, response) = try await urlSession.bytes(for: urlRequest)
+        let (result, response): (URLSession.AsyncBytes, URLResponse)
+        do {
+            (result, response) = try await urlSession.bytes(for: urlRequest)
+        } catch {
+            throw ChatAPIError.network(error: error)
+        }
         lastTask = result.task
         
         print(result, response)
         
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw "Invalid response"
+            throw ChatAPIError.invalidResponse
         }
         
         guard 200...299 ~= httpResponse.statusCode else {
-            var errorText = ""
-            for try await line in result.lines {
-                errorText += line
+            var raw = ""
+            for try await line in result.lines { raw += line }
+            raw = sanitizeJSONText(raw)
+            var message = raw
+            var code: String? = nil
+            var ctx: ErrorContext? = nil
+            if let data = raw.data(using: .utf8), let er = try? jsonDecoder.decode(ErrorRootResponse.self, from: data) {
+                message = er.error.message
+                code = er.error.code
+                ctx = er.error.context
+            } else if let data = raw.data(using: .utf8), let er2 = try? jsonDecoder.decode(ErrorStringRootResponse.self, from: data) {
+                message = er2.error
             }
-            
-            if let data = errorText.data(using: .utf8), let errorResponse = try? jsonDecoder.decode(ErrorRootResponse.self, from: data).error {
-                errorText = "\n\(errorResponse.message)"
-            }
-            
             lastTask = nil
-            throw "Bad Response: \(httpResponse.statusCode), \(errorText)"
+            throw mapServerError(status: httpResponse.statusCode, code: code, message: message, context: ctx)
         }
         
         return AsyncThrowingStream<String, Error> { continuation in
@@ -212,13 +390,45 @@ class ChatGPTAPI: @unchecked Sendable {
                 guard let self else { return }
                 do {
                     var responseText = ""
-                    for try await line in result.lines {
+                    var firstNonEmptySeen = false
+                    var sseErrorMode = false
+                    for try await raw in result.lines {
+                        let line = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !line.isEmpty else { continue }
+                        if !firstNonEmptySeen {
+                            firstNonEmptySeen = true
+                            // If the server returned plain JSON instead of SSE
+                            if line.hasPrefix("{") {
+                                if let data = line.data(using: .utf8) {
+                                    if let er = try? self.jsonDecoder.decode(ErrorRootResponse.self, from: data) {
+                                        throw self.mapServerError(status: 200, code: er.error.code, message: er.error.message, context: er.error.context)
+                                    } else if let er2 = try? self.jsonDecoder.decode(ErrorStringRootResponse.self, from: data) {
+                                        throw self.mapServerError(status: 200, code: nil, message: er2.error, context: nil)
+                                    }
+                                }
+                                throw ChatAPIError.invalidResponse
+                            }
+                        }
+                        if line.hasPrefix("event:") && line.contains("error") {
+                            sseErrorMode = true
+                            continue
+                        }
+                        if sseErrorMode, line.hasPrefix("data: ") {
+                            let body = String(line.dropFirst(6))
+                            if let data = body.data(using: .utf8) {
+                                if let er = try? self.jsonDecoder.decode(ErrorRootResponse.self, from: data) {
+                                    throw self.mapServerError(status: 200, code: er.error.code, message: er.error.message, context: er.error.context)
+                                } else if let er2 = try? self.jsonDecoder.decode(ErrorStringRootResponse.self, from: data) {
+                                    throw self.mapServerError(status: 200, code: nil, message: er2.error, context: nil)
+                                }
+                            }
+                            throw ChatAPIError.invalidResponse
+                        }
                         if line.hasPrefix("data: "),
                            let data = line.dropFirst(6).data(using: .utf8),
                            let response = try? self.jsonDecoder.decode(StreamCompletionResponse.self, from: data),
                            let text = response.choices.first?.delta.content {
                             responseText += text
-//                            print("text \(text)")
                             continuation.yield(text)
                         }
                     }
@@ -234,21 +444,40 @@ class ChatGPTAPI: @unchecked Sendable {
     }
 
     func sendMessage(_ text: String) async throws -> String {
-        var urlRequest = self.urlRequest
+        let url = URL(string: "\(realBaseURL)/v1/chat/completions")!
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        let headers = try await buildHeaders()
+        headers.forEach { urlRequest.setValue($1, forHTTPHeaderField: $0) }
         urlRequest.httpBody = try jsonBody(text: text, stream: false)
         
-        let (data, response) = try await urlSession.data(for: urlRequest)
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await urlSession.data(for: urlRequest)
+        } catch {
+            throw ChatAPIError.network(error: error)
+        }
         
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw "Invalid response"
+            throw ChatAPIError.invalidResponse
         }
         
         guard 200...299 ~= httpResponse.statusCode else {
-            var error = "Bad Response: \(httpResponse.statusCode)"
-            if let errorResponse = try? jsonDecoder.decode(ErrorRootResponse.self, from: data).error {
-                error.append("\n\(errorResponse.message)")
+            var message = ""
+            var code: String? = nil
+            var ctx: ErrorContext? = nil
+            if let er = try? jsonDecoder.decode(ErrorRootResponse.self, from: data) {
+                message = er.error.message
+                code = er.error.code
+                ctx = er.error.context
+            } else if let er2 = try? jsonDecoder.decode(ErrorStringRootResponse.self, from: data) {
+                message = er2.error
             }
-            throw error
+            // As a last resort, look into headers
+            if code == nil, let hdr = (response as? HTTPURLResponse)?.allHeaderFields {
+                if let c = hdr["X-Error-Code"] as? String { code = c }
+            }
+            throw mapServerError(status: httpResponse.statusCode, code: code, message: message, context: ctx)
         }
         
         do {

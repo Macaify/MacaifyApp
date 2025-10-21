@@ -119,6 +119,9 @@ struct ContentViewWrapper: View {
             .environmentObject(emojiViewModel)
             .environment(\.locale, .init(identifier: userDefaultsSelectedLanguage ?? "en"))
             .environmentObject(authClient)
+            .onReceive(NotificationCenter.default.publisher(for: .init("BetterAuthSignedOut"))) { _ in
+                Task { await authClient.session.refreshSession() }
+            }
             .cornerRadius(12)
             .background {
                 Button {
