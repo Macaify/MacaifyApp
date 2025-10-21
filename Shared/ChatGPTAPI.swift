@@ -155,7 +155,27 @@ class ChatGPTAPI: @unchecked Sendable {
             ChatQuery.ChatCompletionMessageParam(role: .init(rawValue: $0.role) ?? .user, content: $0.content)!
         }
 
-        return openai.chatsStream(query: .init(messages: msgs, model: model, temperature: 0.5, stream: true))
+        let upstream: AsyncThrowingStream<ChatStreamResult, Error> = openai.chatsStream(query: .init(messages: msgs, model: model, temperature: 0.5, stream: true))
+
+        // Wrap upstream to accumulate content and persist history when finished
+        return AsyncThrowingStream<ChatStreamResult, Error> { continuation in
+            Task(priority: .userInitiated) { [weak self] in
+                guard let self else { return }
+                do {
+                    var responseText = ""
+                    for try await chunk in upstream {
+                        if let delta = chunk.choices.first?.delta.content, !delta.isEmpty {
+                            responseText += delta
+                        }
+                        continuation.yield(chunk)
+                    }
+                    self.appendToHistoryList(userText: text, responseText: responseText)
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
     }
 
     func sendMessageStream(text: String) async throws -> AsyncThrowingStream<String, Error> {
@@ -259,5 +279,3 @@ extension String: CustomNSError {
         ]
     }
 }
-
-

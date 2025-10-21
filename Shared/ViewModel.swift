@@ -78,11 +78,15 @@ class ViewModel: ObservableObject, Equatable {
             await MainActor.run {
                 self.messages = rows
                 self.didLoadHistory = true
+                // Ensure API history reflects loaded messages for context usage
+                self.updateAPIHistory()
             }
         } catch {
             await MainActor.run {
                 self.messages = []
                 self.didLoadHistory = true
+                // Clear API history if no messages could be loaded
+                self.updateAPIHistory()
             }
         }
     }
@@ -109,6 +113,8 @@ class ViewModel: ObservableObject, Equatable {
 //        print("withContext ? ", conversation.withContext)
         api.withContext = conversation.withContext
         api.systemPrompt = conversation.prompt
+        // Refresh API history from current in-memory messages so context is included
+        updateAPIHistory()
         sendTask = Task { @MainActor in
             await send(text: text)
         }

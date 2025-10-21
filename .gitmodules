@@ -10,3 +10,6 @@
 [submodule "Packages/AppUpdater"]
 	path = Packages/AppUpdater
 	url = git@github.com:s1ntoneli/AppUpdater.git
+[submodule "Packages/BetterAuthSwift"]
+	path = Packages/BetterAuthSwift
+	url = git@github.com:indie-make/better-auth-swift.git
