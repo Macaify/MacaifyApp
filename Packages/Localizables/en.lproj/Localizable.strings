@@ -116,3 +116,7 @@
 "chat_mode_description" = "In Chat Mode, pressing the shortcut key will open the specified chat dialog.";
 "tip_mode_description" = "In Edit Mode, pressing the shortcut key will directly modify the text at the original location. This is often used for content translation and similar scenarios.";
 "auto_add_selected_text" = "Automatically Add Selected Text to Chats";
+"edit_mode_shortcut" = "In-place Edit Shortcut";
+"chat_mode_shortcut" = "Open & Chat Shortcut";
+"edit_mode_help" = "Replaces the selected text in the current app without opening a window.";
+"chat_mode_help" = "Opens Macaify, inserts the selected text, and sends it.";

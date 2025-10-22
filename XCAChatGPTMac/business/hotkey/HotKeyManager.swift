@@ -16,6 +16,7 @@ class HotKeyManager {
 
     static func initHotKeys() {
         KeyboardShortcuts.removeAllHandlers()
+        migrateLegacyShortcuts()
         
 //        KeyboardShortcuts.onKeyDown(for: .search) {
 ////            if !CMDKWindowController.shared.isVisible {
@@ -57,6 +58,26 @@ class HotKeyManager {
         }
     }
     
+    // 将旧的单一快捷键迁移到新模式化快捷键
+    static func migrateLegacyShortcuts() {
+        ConversationViewModel.shared.conversations.forEach { conv in
+            let old = KeyboardShortcuts.getShortcut(for: conv.Name)
+            let edit = KeyboardShortcuts.getShortcut(for: conv.NameEdit)
+            let chat = KeyboardShortcuts.getShortcut(for: conv.NameChat)
+            guard let old = old else { return }
+            // 仅在新键位均未设置时迁移，避免覆盖用户已设置的键位
+            if edit == nil && chat == nil {
+                if conv.typingInPlace {
+                    KeyboardShortcuts.setShortcut(old, for: conv.NameEdit)
+                } else {
+                    KeyboardShortcuts.setShortcut(old, for: conv.NameChat)
+                }
+            }
+            // 无论是否迁移，清理旧键位，避免重复触发
+            KeyboardShortcuts.reset(conv.Name)
+        }
+    }
+
     static func register(_ conversation: GPTConversation) {
         KeyboardShortcuts.onKeyDown(for: conversation.Name) { [self] in
             NSLog("key pressed \(conversation.autoAddSelectedText) conversation \(conversation.id) autoAdd \(conversation.autoAddSelectedText)")
@@ -114,25 +135,46 @@ class HotKeyManager {
                 PathManager.shared.toChat(conversation)
             }
         }
+
+        // Additional explicit bindings for two-mode shortcuts
+        if KeyboardShortcuts.getShortcut(for: conversation.NameEdit) != nil {
+            KeyboardShortcuts.onKeyDown(for: conversation.NameEdit) { [self] in
+                NSLog("edit-mode hotkey pressed for \(conversation.id)")
+                TypingInPlace.shared.typeInPlace(conv: conversation)
+            }
+        }
+        if KeyboardShortcuts.getShortcut(for: conversation.NameChat) != nil {
+            KeyboardShortcuts.onKeyDown(for: conversation.NameChat) { [self] in
+                NSLog("chat-mode hotkey pressed for \(conversation.id)")
+                // 按原聊天逻辑：尽力抓取选中文本，作为上下文注入；始终打开窗口并新建会话
+                StartupPasteboardManager.shared.startup { text in
+                    let bundleId = StartupPasteboardManager.shared.currentSourceBundleId ?? ""
+                    let appName = StartupPasteboardManager.shared.currentSourceAppName ?? ""
+                    resume()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                        NotificationCenter.default.post(name: .init("QuickChatSelectedText"), object: nil, userInfo: [
+                            "convId": conversation.id.uuidString,
+                            "text": text ?? "",
+                            "sourceBundleId": bundleId,
+                            "sourceAppName": appName
+                        ])
+                    }
+                }
+            }
+        }
     }
 }
 
 func resume() {
-    if let w = NSApp.windows.first {
-        w.makeKeyAndOrderFront(nil)
+    // 只通过 WindowGroup(id: "main") 打开主窗口，不遍历 NSApp.windows
+    if let open = WindowBridge.shared.openMainWindow {
+        open()
     }
     NSApp.activate(ignoringOtherApps: true)
 }
 
 func toggleMainWindow() {
-    if let w = NSApp.windows.first {
-        if NSApp.isActive && w.isKeyWindow {
-            NSApp.hide(nil)
-        } else {
-            w.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-        }
-    } else {
-        NSApp.activate(ignoringOtherApps: true)
-    }
+    // 简化：直接打开 WindowGroup(id: "main") 的窗口
+    if let open = WindowBridge.shared.openMainWindow { open() }
+    NSApp.activate(ignoringOtherApps: true)
 }

@@ -11,6 +11,7 @@ import AppUpdater
 import BetterAuth
 import BetterAuthBrowserOTT
 //import FirebaseCore
+import ApplicationServices
 
 @main
 struct XCAChatGPTMacApp: App {
@@ -50,7 +51,7 @@ struct XCAChatGPTMacApp: App {
     }
 
     private var windowView: some Scene {
-        WindowGroup {
+        WindowGroup(id: "main") {
             MainSplitView()
                 .frame(minWidth: 920, minHeight: 600)
                 .onOpenURL { url in
@@ -60,6 +61,19 @@ struct XCAChatGPTMacApp: App {
                 .task {
                     // Load initial session on app start
                     await authClient.session.refreshSession()
+                }
+                .onAppear {
+                    // Register a global opener that ensures exactly one main window.
+                    WindowBridge.shared.openMainWindow = {
+                        if let win = WindowBridge.shared.mainWindow {
+                            if win.isMiniaturized { win.deminiaturize(nil) }
+                            win.makeKeyAndOrderFront(nil)
+                        } else if !WindowBridge.shared.openingMain {
+                            WindowBridge.shared.openingMain = true
+                            openWindow(id: "main")
+                        }
+                        NSApp.activate(ignoringOtherApps: true)
+                    }
                 }
         }
     }
@@ -207,6 +221,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         globalMonitor.start()
         globalMonitor.updateModifier(appShortcutKey())
         // Using SwiftUI WindowGroup as main window (MainSplitView)
+        _ = hasAccessibilityPermission(prompt: true)
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         print("applicationShouldTerminateAfterLastWindowClosed")

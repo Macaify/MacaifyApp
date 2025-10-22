@@ -65,12 +65,17 @@ final class ChatSessionViewModel: ObservableObject {
     private var errorSecondaryAction: (() -> Void)? = nil
     @Published var modelLabel: String = ""
     @Published var contextSnippet: String? = nil
+    @Published var contextSourceAppName: String? = nil
+    @Published var contextSourceBundleId: String? = nil
     @Published var contextPinned: Bool = true
     struct SessionInfo: Identifiable, Hashable { let id = UUID(); var start: Int; var end: Int; var title: String }
     @Published var sessions: [SessionInfo] = []
     @Published var selectedSession: Int = 0
     @Published var tokenHint: String = ""
     private var sessionIDs: [NSManagedObjectID] = []
+    @Published var pendingNewSession: Bool = false
+    // Async token count calculation task (for throttling/off-main work)
+    private var tokenCalcTask: Task<Void, Never>? = nil
 
     private var api: ChatGPTAPI
     private var conv: GPTConversation
@@ -90,13 +95,17 @@ final class ChatSessionViewModel: ObservableObject {
     }
 
     func updateConversation(_ next: GPTConversation) {
+        let convChanged = next.id != self.conv.id
         self.conv = next
         let resolved = Self.resolveAPI(for: next)
         self.api = resolved.api
         self.lastConfig = resolved.cfg
         self.configHint = resolved.hint
         self.modelLabel = Self.label(for: resolved.cfg)
-        Task { await loadHistory() }
+        // Only reload messages when switching to a different bot
+        if convChanged {
+            Task { await loadHistory() }
+        }
     }
 
     private func setError(_ message: String, primaryTitle: String? = nil, secondaryTitle: String? = nil, primary: (() -> Void)? = nil, secondary: (() -> Void)? = nil) {
@@ -179,6 +188,14 @@ final class ChatSessionViewModel: ObservableObject {
 
     @MainActor
     func loadHistory(limit: Int = 80) async {
+        // 当准备开启临时会话时，不要回填旧会话历史，避免视觉上与上一会话混在一起
+        if pendingNewSession {
+            messages = []
+            allMessages = []
+            api.history = []
+            tokenHint = ""
+            return
+        }
         messages = []
         error = nil
         // Ensure at least one session exists and messages are assigned
@@ -243,6 +260,13 @@ final class ChatSessionViewModel: ObservableObject {
         Task { await loadHistory() }
     }
 
+    // 临时会话状态下，允许用户切换到已保存的某个会话
+    @MainActor
+    func selectExistingSessionWhilePending(_ index: Int) {
+        pendingNewSession = false
+        selectSession(index)
+    }
+
     private func applySelectedSession() {
         guard !sessions.isEmpty else {
             messages = []
@@ -261,6 +285,8 @@ final class ChatSessionViewModel: ObservableObject {
     func send() async {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isSending else { return }
+        // 首次发送时，如果是临时会话则立即实体化，确保会话栏与消息区域状态同步
+        ensureSessionReady()
         input = ""
         isSending = true
         error = nil
@@ -288,19 +314,21 @@ final class ChatSessionViewModel: ObservableObject {
                   "useProxy=\(useProxy)",
                   "proxy=\(proxyAddr)")
         }
-        var composed = text
-        let mentionsContext = text.localizedCaseInsensitiveContains("@context") || text.contains("@上下文")
-        if let snippet = contextSnippet, !snippet.isEmpty, (contextPinned || mentionsContext) {
-            composed = "【上下文】\n\(snippet)\n\n\(text)"
-        }
-        messages.append(.init(sender: .user, text: composed))
-        allMessages.append(.init(sender: .user, text: composed))
+        // For UI and persistence, keep the user's message clean (no inline context)
+        messages.append(.init(sender: .user, text: text))
+        allMessages.append(.init(sender: .user, text: text))
         if !sessions.isEmpty { sessions[selectedSession].end = allMessages.count }
         updateTokenHint(includingInput: "")
         messages.append(.init(sender: .assistant, text: "", isStreaming: true))
         allMessages.append(.init(sender: .assistant, text: "", isStreaming: true))
         do {
-            let stream = try await api.chatsStream(text: composed)
+            // Inject context into system prompt while sending (temporary override)
+            let originalPrompt = api.systemPrompt
+            if let suffix = makeSystemContextSuffix() {
+                api.systemPrompt = originalPrompt + "\n\n" + "<context> is the context this chat session is based on." + "\n" + suffix
+            }
+            defer { api.systemPrompt = originalPrompt }
+            let stream = try await api.chatsStream(text: text)
             var buffer = ""
             for try await chunk in stream {
                 let delta = chunk.choices.first?.delta.content ?? ""
@@ -377,9 +405,6 @@ final class ChatSessionViewModel: ObservableObject {
             self.error = "没有可运行的输入（请输入内容或选择一条消息）"
             return
         }
-        if let snippet = contextSnippet, !snippet.isEmpty {
-            composed = "【上下文】\n\(snippet)\n\n\(composed)"
-        }
 
         // Build a temporary API for the selected agent
         let resolved = Self.resolveAPI(for: agent)
@@ -387,6 +412,12 @@ final class ChatSessionViewModel: ObservableObject {
         // Show a streaming assistant bubble tagged with agent name
         messages.append(.init(sender: .assistant, text: "", isStreaming: true, viaAgent: agent.name))
         do {
+            // Inject context into system prompt for agent run (temporary override)
+            let original = tempAPI.systemPrompt
+            if let suffix = makeSystemContextSuffix() {
+                tempAPI.systemPrompt = original + "\n\n" + "<context> is the context this chat session is based on." + "\n" + suffix
+            }
+            defer { tempAPI.systemPrompt = original }
             let stream = try await tempAPI.chatsStream(text: composed)
             var buffer = ""
             for try await chunk in stream {
@@ -466,6 +497,12 @@ final class ChatSessionViewModel: ObservableObject {
         messages.append(.init(sender: .assistant, text: "", isStreaming: true))
         allMessages.append(.init(sender: .assistant, text: "", isStreaming: true))
         do {
+            // Inject context into system prompt while regenerating (temporary override)
+            let originalPrompt = api.systemPrompt
+            if let suffix = makeSystemContextSuffix() {
+                api.systemPrompt = originalPrompt + "\n\n" + "<context> is the context this chat session is based on." + "\n" + suffix
+            }
+            defer { api.systemPrompt = originalPrompt }
             let stream = try await api.chatsStream(text: lastUser)
             var buffer = ""
             for try await chunk in stream {
@@ -506,24 +543,50 @@ final class ChatSessionViewModel: ObservableObject {
         isSending = false
     }
 
-    // Start a new session by inserting a boundary after the last answer
+    // Start a new session lazily (不立即持久化，会在首次发送时创建)
     @MainActor
     func startNewSession() {
-        if let newSession = PersistenceController.shared.createSession(conversation: conv, title: "新会话") {
-            // refresh sessions and jump to last
+        pendingNewSession = true
+        messages.removeAll()
+        allMessages.removeAll()
+        api.history = []
+        tokenHint = ""
+    }
+
+    private func ensureSessionReady() {
+        guard pendingNewSession || sessions.isEmpty || selectedSession >= sessionIDs.count else { return }
+        if let _ = PersistenceController.shared.createSession(conversation: conv, title: "新会话") {
             let sess = PersistenceController.shared.loadSessions(conversation: conv).filter { !$0.archived }
             sessionIDs = sess.map { $0.objectID }
             sessions = sess.map { SessionInfo(start: 0, end: 0, title: $0.title) }
-            // Always jump to the newest session (sorted by updatedAt desc => index 0)
             selectedSession = 0
-            Task { await loadHistory() }
+            pendingNewSession = false
         }
     }
 
     func updateTokenHint(includingInput input: String) {
         let historyText = api.history.map { $0.content }.joined(separator: "\n")
-        let total = encoder.encode(text: historyText + (input.isEmpty ? "" : ("\n" + input))).count
-        tokenHint = "~ \(total) / \(Defaults[.maxToken]) tokens"
+        let maxTk = Defaults[.maxToken]
+        tokenCalcTask?.cancel()
+        tokenCalcTask = Task.detached(priority: .utility) { [historyText, input, weak self] in
+            guard let self else { return }
+            let text = historyText + (input.isEmpty ? "" : ("\n" + input))
+            let total = self.encoder.encode(text: text).count
+            await MainActor.run { [weak self] in self?.tokenHint = "~ \(total) / \(maxTk) tokens" }
+        }
+    }
+
+    // Build a structured context block to append to system prompt
+    private func makeSystemContextSuffix() -> String? {
+        let raw = (contextSnippet ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else { return nil }
+        let app = (contextSourceAppName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        var block = "<context>\n"
+        if !app.isEmpty {
+            block += "<source app>\n\(app)\n</source app>\n"
+        }
+        block += "<selectedText>\n\(raw)\n</selectedText>\n" + "</context>"
+        return block
     }
 
     @MainActor
@@ -563,6 +626,7 @@ final class ChatSessionViewModel: ObservableObject {
 
     private func persist(user: String, assistant: String) {
         guard !assistant.isEmpty else { return }
+        ensureSessionReady()
         let mc = conv.managedObjectContext ?? PersistenceController.shared.container.viewContext
         let answer = GPTAnswer(role: "user", prompt: user, response: assistant, parentId: conv.own.last?.uuid, context: mc)
         // Assign current session if available
@@ -607,6 +671,11 @@ struct MainSplitView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
+        // Register the NSWindow that hosts the main chat UI
+        .background(HostingWindowFinder { window in
+            WindowBridge.shared.mainWindow = window
+            WindowBridge.shared.openingMain = false
+        })
         .onAppear { if let s = store.selected { chatVM.updateConversation(s) } }
         .onChange(of: store.selectedID) { _ in if let s = store.selected { chatVM.updateConversation(s) } }
         .onChange(of: store.bots) { _ in if let s = store.selected { chatVM.updateConversation(s) } }
@@ -619,13 +688,21 @@ struct MainSplitView: View {
         .onReceive(NotificationCenter.default.publisher(for: .init("QuickChatSelectedText"))) { note in
             guard let info = note.userInfo as? [String: Any] else { return }
             let convIdStr = (info["convId"] as? String) ?? ""
-            let text = (info["text"] as? String) ?? ""
+            let textRaw = (info["text"] as? String) ?? ""
+            let srcApp = (info["sourceAppName"] as? String) ?? ""
+            let srcBundle = (info["sourceBundleId"] as? String) ?? ""
             if let uuid = UUID(uuidString: convIdStr), let bot = store.bots.first(where: { $0.id == uuid }) {
                 store.selectedID = uuid
                 chatVM.updateConversation(bot)
-                // Always open a new session on hotkey
+                // Hotkey 打开：只开启“待创建”的新会话，不立即持久化
                 chatVM.startNewSession()
-                if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { chatVM.injectContext(text) }
+                let text = textRaw.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !text.isEmpty {
+                    // 分离来源与正文：来源走独立字段，正文保持纯文本
+                    chatVM.contextSourceAppName = srcApp.isEmpty ? nil : srcApp
+                    chatVM.contextSourceBundleId = srcBundle.isEmpty ? nil : srcBundle
+                    chatVM.injectContext(text)
+                }
             }
         }
         .toolbar { toolbar }
@@ -656,6 +733,31 @@ struct MainSplitView: View {
             }
             Button { chatVM.clearHistory() } label: { Label("Clear", systemImage: "trash") }.disabled(store.selected == nil)
             Button { showSettings = true } label: { Label("Bot Settings", systemImage: "gear") }.disabled(store.selected == nil)
+        }
+    }
+}
+
+// Utility to access the hosting NSWindow for a SwiftUI view hierarchy
+private struct HostingWindowFinder: NSViewRepresentable {
+    var onFound: (NSWindow) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { [weak view] in
+            guard let window = view?.window else { return }
+            onFound(window)
+            NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: .main) { _ in
+                if WindowBridge.shared.mainWindow === window {
+                    WindowBridge.shared.mainWindow = nil
+                }
+            }
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async { [weak nsView] in
+            if let window = nsView?.window { onFound(window) }
         }
     }
 }
@@ -726,17 +828,21 @@ struct ChatDetailView: View {
                                     )
                                 } else {
                                     Button {
-                                        viewModel.selectSession(idx)
+                                        if viewModel.pendingNewSession {
+                                            viewModel.selectExistingSessionWhilePending(idx)
+                                        } else {
+                                            viewModel.selectSession(idx)
+                                        }
                                     } label: {
                                         HStack(spacing: 6) {
-                                            Image(systemName: idx == viewModel.selectedSession ? "bubble.left.and.bubble.right.fill" : "bubble.left.and.bubble.right")
+                                            Image(systemName: (!viewModel.pendingNewSession && idx == viewModel.selectedSession) ? "bubble.left.and.bubble.right.fill" : "bubble.left.and.bubble.right")
                                             Text(info.title).lineLimit(1)
                                         }
                                         .font(.caption)
                                         .padding(.horizontal, 10).padding(.vertical, 6)
                                         .background(
                                             RoundedRectangle(cornerRadius: 8)
-                                                .fill(idx == viewModel.selectedSession ? Color.accentColor.opacity(0.12) : Color.clear)
+                                                .fill((!viewModel.pendingNewSession && idx == viewModel.selectedSession) ? Color.accentColor.opacity(0.12) : Color.clear)
                                                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.25)))
                                         )
                                     }
@@ -768,6 +874,20 @@ struct ChatDetailView: View {
                                     }
                                 }
                             }
+                            // 临时新会话标记（未持久化）
+                            if viewModel.pendingNewSession {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "sparkles")
+                                    Text("新会话（未开始）")
+                                }
+                                .font(.caption)
+                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color.accentColor.opacity(0.12))
+                                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.accentColor.opacity(0.25)))
+                                )
+                            }
                         }
                         .padding(.horizontal, 12)
                     }
@@ -783,35 +903,51 @@ struct ChatDetailView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 6)
             }
-            if let ctx = viewModel.contextSnippet, !ctx.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
+            if let raw = viewModel.contextSnippet, !raw.isEmpty {
+                // 兼容旧格式：“【来源：xxx】\n正文”
+                let parsed: (src: String?, body: String) = {
+                    let s = raw
+                    if s.hasPrefix("【来源："), let r = s.firstIndex(of: "】") {
+                        let src = String(s[s.index(s.startIndex, offsetBy: 3)..<r])
+                        let bodyStart = s.index(after: r)
+                        let body = s[bodyStart...].trimmingCharacters(in: .whitespacesAndNewlines)
+                        return (src.isEmpty ? nil : src, body)
+                    }
+                    return (nil, s)
+                }()
+                let sourceName = viewModel.contextSourceAppName ?? parsed.src
+                let body = parsed.body
+
+                VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Label("对话上下文", systemImage: "text.append")
-                            .font(.subheadline)
+                        // 用样式区分来源，不出现“来源”二字；优先展示真实 App 图标
+                        if let name = sourceName, !name.isEmpty {
+                            HStack(spacing: 6) {
+                                sourceAppIcon(bundleId: viewModel.contextSourceBundleId)
+                                Text(name)
+                            }
+                            .font(.caption)
                             .foregroundStyle(.secondary)
+                        }
                         Spacer()
                         Button {
                             NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(ctx, forType: .string)
-                        } label: {
-                            Image(systemName: "doc.on.doc")
-                        }
+                            NSPasteboard.general.setString(body, forType: .string)
+                        } label: { Image(systemName: "doc.on.doc") }
                         .buttonStyle(.plain)
-                        Button {
-                            withAnimation { contextCollapsed.toggle() }
-                        } label: {
+                        Button { withAnimation { contextCollapsed.toggle() } } label: {
                             Image(systemName: contextCollapsed ? "chevron.down" : "chevron.up")
                         }
                         .buttonStyle(.plain)
                     }
                     if contextCollapsed {
-                        Text(ctx)
+                        Text(body)
                             .font(.caption)
                             .lineLimit(1)
                             .foregroundStyle(.secondary)
                     } else {
                         ScrollView(.vertical) {
-                            Text(ctx)
+                            Text(body)
                                 .font(.caption)
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -820,8 +956,8 @@ struct ChatDetailView: View {
                     }
                 }
                 .padding(10)
-                .background(RoundedRectangle(cornerRadius: 8).fill(Color.gray.opacity(0.05)))
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.12)))
+                .background(RoundedRectangle(cornerRadius: 10).fill(Color(nsColor: .textBackgroundColor)))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.gray.opacity(0.15), lineWidth: 1))
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
             }
@@ -1030,6 +1166,8 @@ struct ChatDetailView: View {
             .padding(12)
         }
         .navigationTitle(bot.name.isEmpty ? "Chat" : bot.name)
+        // 若是临时会话，给标题加个“(未开始)”提示，避免误解仍在上一会话
+        .navigationSubtitle(viewModel.pendingNewSession ? "未开始的临时会话" : "")
         .onAppear { viewModel.updateConversation(bot) }
         .alert("确认删除会话？", isPresented: $showDeleteConfirm) {
             Button("取消", role: .cancel) { pendingDeleteIndex = nil }
@@ -1076,6 +1214,22 @@ struct ChatDetailView: View {
             default:
                 return false
             }
+        }
+    }
+
+    // MARK: - Helpers
+    @ViewBuilder
+    private func sourceAppIcon(bundleId: String?) -> some View {
+        if let bid = bundleId, let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bid) {
+            let icon = NSWorkspace.shared.icon(forFile: url.path)
+            Image(nsImage: icon)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 14, height: 14)
+                .cornerRadius(3)
+        } else {
+            Image(systemName: "app.fill")
+                .font(.system(size: 12, weight: .semibold))
         }
     }
 }

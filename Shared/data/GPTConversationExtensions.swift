@@ -128,10 +128,20 @@ extension GPTConversation {
 
         let newConv = GPTConversation(name, id: id, prompt: prompt, desc: desc, icon: icon, shortcut: shortcut, timestamp: timestamp, autoAddSelectedText: autoAddSelectedText, typingInPlace: typingInPlace, withContext: withContext, modelSource: modelSource, modelInstanceId: modelInstanceId, modelId: modelId, context: context)
         
-        // 热键转移
+        // 热键转移（兼容旧、支持新：主/编辑/聊天 三个键位）
         if let shortcut = KeyboardShortcuts.getShortcut(for: self.Name) {
             KeyboardShortcuts.setShortcut(shortcut, for: newConv.Name)
             KeyboardShortcuts.reset(self.Name)
+            HotKeyManager.register(newConv)
+        }
+        if let shortcut = KeyboardShortcuts.getShortcut(for: self.NameEdit) {
+            KeyboardShortcuts.setShortcut(shortcut, for: newConv.NameEdit)
+            KeyboardShortcuts.reset(self.NameEdit)
+            HotKeyManager.register(newConv)
+        }
+        if let shortcut = KeyboardShortcuts.getShortcut(for: self.NameChat) {
+            KeyboardShortcuts.setShortcut(shortcut, for: newConv.NameChat)
+            KeyboardShortcuts.reset(self.NameChat)
             HotKeyManager.register(newConv)
         }
 
@@ -170,6 +180,8 @@ extension GPTConversation {
     
     func delete() {
         KeyboardShortcuts.reset(Name)
+        KeyboardShortcuts.reset(NameEdit)
+        KeyboardShortcuts.reset(NameChat)
         let context = managedObjectContext!
         own.forEach {
             context.delete($0)

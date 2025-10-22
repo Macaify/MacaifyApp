@@ -20,6 +20,12 @@ extension GPTConversation {
     var Name: KeyboardShortcuts.Name {
         KeyboardShortcuts.Name(uuid.uuidString)
     }
+    var NameEdit: KeyboardShortcuts.Name {
+        KeyboardShortcuts.Name("\(uuid.uuidString).edit")
+    }
+    var NameChat: KeyboardShortcuts.Name {
+        KeyboardShortcuts.Name("\(uuid.uuidString).chat")
+    }
     
     func NameWithDefault(shortcut: KeyboardShortcuts.Name.Shortcut) -> KeyboardShortcuts.Name {
         return KeyboardShortcuts.Name(uuid.uuidString, default: shortcut)

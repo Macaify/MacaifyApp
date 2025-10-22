@@ -134,15 +134,25 @@ struct ConversationPreferenceView: View {
     
     var hotkey: some View {
         Section("hotkey") {
-            KeyboardShortcuts.Recorder(for: conversation.Name) { shortcut in
-                print("shortcut \(shortcut) \(conversation.uuid.uuidString)")
-                if shortcut != nil {
-                    HotKeyManager.register(conversation)
-                } else {
-                    KeyboardShortcuts.reset(conversation.Name)
+            VStack(alignment: .leading, spacing: 10) {
+                LabeledContent(String(localized: "edit_mode_shortcut")) {
+                    KeyboardShortcuts.Recorder(for: conversation.NameEdit) { shortcut in
+                        if shortcut != nil { HotKeyManager.register(conversation) }
+                        else { KeyboardShortcuts.reset(conversation.NameEdit) }
+                    }
+                    .controlSize(.large)
                 }
+                Text(String(localized: "edit_mode_help")).font(.caption).foregroundStyle(.secondary)
+
+                LabeledContent(String(localized: "chat_mode_shortcut")) {
+                    KeyboardShortcuts.Recorder(for: conversation.NameChat) { shortcut in
+                        if shortcut != nil { HotKeyManager.register(conversation) }
+                        else { KeyboardShortcuts.reset(conversation.NameChat) }
+                    }
+                    .controlSize(.large)
+                }
+                Text(String(localized: "chat_mode_help")).font(.caption).foregroundStyle(.secondary)
             }
-            .controlSize(.large)
         }
     }
     

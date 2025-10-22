@@ -51,6 +51,7 @@
 		696B6B8729E1911300845C71 /* PathManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6B8629E1911300845C71 /* PathManager.swift */; };
 		696B6B8929E1953500845C71 /* MacContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6B8829E1953500845C71 /* MacContentView.swift */; };
 		696B6B8B29E1A34A00845C71 /* ConversationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6B8A29E1A34A00845C71 /* ConversationViewModel.swift */; };
+        69C1A0B12D13000100AA0001 /* WindowBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69C1A0B02D13000100AA0001 /* WindowBridge.swift */; };
 		696B6B8E29E1D96800845C71 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6B8D29E1D96800845C71 /* ChatView.swift */; };
 		696B6B9029E2907700845C71 /* Color.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6B8F29E2907700845C71 /* Color.swift */; };
 		696B6B9229E29E3900845C71 /* Themes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696B6B9129E29E3900845C71 /* Themes.swift */; };
@@ -363,6 +364,7 @@
 		69DEEE652A65A86C009840C6 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		8B057582298E52C000A56C9A /* Macaify.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Macaify.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8B057584298E52C000A56C9A /* XCAChatGPTMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XCAChatGPTMacApp.swift; sourceTree = "<group>"; };
+        69C1A0B02D13000100AA0001 /* WindowBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowBridge.swift; sourceTree = "<group>"; };
 		8B057588298E52C000A56C9A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8B05758B298E52C000A56C9A /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		8B05758D298E52C000A56C9A /* XCAChatGPTMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = XCAChatGPTMac.entitlements; sourceTree = "<group>"; };
@@ -622,6 +624,7 @@
 				698C5ACE2A0F1D60007C046A /* Initializer.swift */,
 				698C5AD52A10AC08007C046A /* TypingInPlace.swift */,
 				698C5AE92A16ABA3007C046A /* KeyMonitorManager.swift */,
+                69C1A0B02D13000100AA0001 /* WindowBridge.swift */,
 			);
 			path = utils;
 			sourceTree = "<group>";
@@ -1272,6 +1275,7 @@
 				696B6BE829FAEB9C00845C71 /* KeyUtils.swift in Sources */,
 				69B0AA122D0001A000AA0001 /* KeychainHelper.swift in Sources */,
 				69F0AA012EA8FACE00AA1001 /* SettingsUI.swift in Sources */,
+                69C1A0B12D13000100AA0001 /* WindowBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -117,4 +117,8 @@
 "chat_mode_description" = "聊天模式下，按下快捷键会打开指定的聊天对话框";
 "tip_mode_description" = "编辑模式下，按下快捷键会直接修改原处的文字，多用于内容翻译等场景";
 "auto_add_selected_text"="自动添加选中文本到聊天框";
+"edit_mode_shortcut" = "编辑模式快捷键";
+"chat_mode_shortcut" = "聊天模式快捷键";
+"edit_mode_help" = "不弹窗，在当前应用中直接替换选中文本。";
+"chat_mode_help" = "打开 Macaify，将所选内容填入并直接发送。";
 "icon"="图标";

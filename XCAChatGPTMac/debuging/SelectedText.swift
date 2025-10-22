@@ -8,6 +8,8 @@
 import Foundation
 
 import Cocoa
+import ApplicationServices
+import Carbon.HIToolbox
 //
 //func getSelectedText() -> String? {
 //    let systemWideElement = AXUIElementCreateSystemWide()
@@ -63,59 +65,84 @@ import Cocoa
 //}
 
 func performGlobalCopyShortcut() {
+    func keyEvents(forPressAndReleaseVirtualKey virtualKey: Int) -> [CGEvent] {
+        let eventSource = CGEventSource(stateID: .hidSystemState)
+        return [
+            CGEvent(keyboardEventSource: eventSource, virtualKey: CGKeyCode(virtualKey), keyDown: true)!,
+            CGEvent(keyboardEventSource: eventSource, virtualKey: CGKeyCode(virtualKey), keyDown: false)!,
+        ]
+    }
 
-   func keyEvents(forPressAndReleaseVirtualKey virtualKey: Int) -> [CGEvent] {
-       let eventSource = CGEventSource(stateID: .hidSystemState)
-       return [
-           CGEvent(keyboardEventSource: eventSource, virtualKey: CGKeyCode(virtualKey), keyDown: true)!,
-           CGEvent(keyboardEventSource: eventSource, virtualKey: CGKeyCode(virtualKey), keyDown: false)!,
-       ]
-   }
+    let tapLocation = CGEventTapLocation.cghidEventTap
+    let events = keyEvents(forPressAndReleaseVirtualKey: Int(kVK_ANSI_C)) // C
 
-   let tapLocation = CGEventTapLocation.cghidEventTap
-    let events = keyEvents(forPressAndReleaseVirtualKey: 8)
-
-   events.forEach {
-       $0.flags = .maskCommand
-       $0.post(tap: tapLocation)
-   }
+    // Slight spacing between down/up improves reliability in some apps
+    if let down = events.first, let up = events.last {
+        down.flags = .maskCommand
+        up.flags = .maskCommand
+        down.post(tap: tapLocation)
+        usleep(8_000)
+        up.post(tap: tapLocation)
+    }
 }
+
 func performGlobalPasteShortcut() {
+    func keyEvents(forPressAndReleaseVirtualKey virtualKey: Int) -> [CGEvent] {
+        let eventSource = CGEventSource(stateID: .hidSystemState)
+        return [
+            CGEvent(keyboardEventSource: eventSource, virtualKey: CGKeyCode(virtualKey), keyDown: true)!,
+            CGEvent(keyboardEventSource: eventSource, virtualKey: CGKeyCode(virtualKey), keyDown: false)!,
+        ]
+    }
 
-   func keyEvents(forPressAndReleaseVirtualKey virtualKey: Int) -> [CGEvent] {
-       let eventSource = CGEventSource(stateID: .hidSystemState)
-       return [
-           CGEvent(keyboardEventSource: eventSource, virtualKey: CGKeyCode(virtualKey), keyDown: true)!,
-           CGEvent(keyboardEventSource: eventSource, virtualKey: CGKeyCode(virtualKey), keyDown: false)!,
-       ]
-   }
+    let tapLocation = CGEventTapLocation.cghidEventTap
+    let events = keyEvents(forPressAndReleaseVirtualKey: Int(kVK_ANSI_V)) // V
 
-   let tapLocation = CGEventTapLocation.cghidEventTap
-    let events = keyEvents(forPressAndReleaseVirtualKey: 9)
+    if let down = events.first, let up = events.last {
+        down.flags = .maskCommand
+        up.flags = .maskCommand
+        down.post(tap: tapLocation)
+        usleep(8_000)
+        up.post(tap: tapLocation)
+    }
+}
 
-   events.forEach {
-       $0.flags = .maskCommand
-       $0.post(tap: tapLocation)
-   }
+// MARK: - Accessibility helpers
+@discardableResult
+func hasAccessibilityPermission(prompt: Bool = false) -> Bool {
+    let opts: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): prompt]
+    return AXIsProcessTrustedWithOptions(opts)
+}
+
+func getSelectedTextAX() -> String? {
+    guard hasAccessibilityPermission() else { return nil }
+    let systemWide = AXUIElementCreateSystemWide()
+    var focused: AnyObject?
+    let statusFocused = AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &focused)
+    guard statusFocused == .success, let element = focused else { return nil }
+    var selected: AnyObject?
+    let statusText = AXUIElementCopyAttributeValue(element as! AXUIElement, kAXSelectedTextAttribute as CFString, &selected)
+    if statusText == .success, let s = selected as? String, !s.isEmpty {
+        return s
+    }
+    return nil
+}
+
+func frontmostAppInfo() -> (bundleId: String?, name: String?) {
+    if let app = NSWorkspace.shared.frontmostApplication {
+        return (app.bundleIdentifier, app.localizedName)
+    }
+    return (nil, nil)
 }
 
 func getLatestTextFromPasteboard() -> (text: String?, time: Date?) {
-    guard let pasteboard = NSPasteboard.general.pasteboardItems else {
-        return (nil, nil)
-    }
-    guard let latestItem = pasteboard.first else {
-        return (nil, nil)
-    }
-    let text = latestItem.string(forType: .string)
-//    let time = latestItem.propertyList(forType: .init(rawValue: "com.apple.metadata:kMDItemCopyTimestamp")) as? Date
-    let timeData = latestItem.propertyList(forType: .color)
-//    let time = timeData?["com.apple.metadata:kMDItemCopyTimestamp"] as? Date
-    print("timeData \(timeData)")
-
+    // Using direct string(forType:) is more reliable across apps
+    let text = NSPasteboard.general.string(forType: .string)
     return (text, Date())
 }
 
 func copy(text: String) {
-    NSPasteboard.general.clearContents()
+    // Declare types instead of full clear to avoid edge cases with some apps
+    NSPasteboard.general.declareTypes([.string], owner: nil)
     NSPasteboard.general.setString(text, forType: .string)
 }

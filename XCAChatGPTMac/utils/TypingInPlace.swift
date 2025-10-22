@@ -18,11 +18,21 @@ class TypingInPlace: ObservableObject {
     private var pasteTimer: Timer? = nil
     
     func typeInPlace(conv: GPTConversation) {
-        performGlobalCopyShortcut()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            let cp = getLatestTextFromPasteboard()
-            print("newClip", cp.text, cp.time)
-            var newValue = cp.text ?? ""
+        let (bid, name) = frontmostAppInfo()
+        print("[TIP] frontmost before copy: \(bid ?? "?") / \(name ?? "?")")
+        // Try AX first for better reliability
+        var captured = getSelectedTextAX()
+        if captured == nil || captured?.isEmpty == true {
+            performGlobalCopyShortcut()
+        }
+        // Give the target app a bit more time to update clipboard when using Cmd+C
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            if captured == nil || captured?.isEmpty == true {
+                let cp = getLatestTextFromPasteboard()
+                print("newClip", cp.text as Any, cp.time as Any)
+                captured = cp.text
+            }
+            var newValue = captured ?? ""
 
             if (!newValue.isEmpty) {
                 self.interupt()
@@ -59,6 +69,7 @@ class TypingInPlace: ObservableObject {
                     }
                     catch {
                         self?.interupt()
+                        print("[TIP] stream error: \(error)")
                     }
                 }
             }
@@ -101,6 +112,7 @@ class TypingInPlace: ObservableObject {
             }
             catch {
                 self?.interupt()
+                print("[TIP] stream error: \(error)")
             }
         }
     }
@@ -127,8 +139,11 @@ func paste(delay: CGFloat, sentence: String) {
     queue.asyncAfter(deadline: .now() + delay) {
         copy(text: sentence)
 //        print("copy into clipboard")
+        // Let pasteboard propagate before issuing Cmd+V
+        usleep(65_000)
         performGlobalPasteShortcut()
-        print("paste \(sentence)")
+        let (bid, name) = frontmostAppInfo()
+        print("paste -> frontmost: \(bid ?? "?") / \(name ?? "?") len=\(sentence.count)")
     }
 }
 
