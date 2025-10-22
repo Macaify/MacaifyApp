@@ -763,7 +763,9 @@ struct MainSplitView: View {
                     Image(systemName: sel.withContext ? "arrow.triangle.2.circlepath" : "arrow.triangle.2.circlepath.circle")
                 }.toggleStyle(.button).help("Toggle Context")
             }
-            Button { chatVM.clearHistory() } label: { Label("Clear", systemImage: "trash") }.disabled(store.selected == nil)
+            Button { chatVM.clearHistory() } label: { Label("Clear", systemImage: "trash") }
+                .disabled(store.selected == nil)
+                .keyboardShortcut(.init("d"), modifiers: .command)
             Button { showSettings = true } label: { Label("Bot Settings", systemImage: "gear") }.disabled(store.selected == nil)
         }
     }
@@ -933,6 +935,7 @@ struct ChatDetailView: View {
                             .labelStyle(.titleAndIcon)
                     }
                     .buttonStyle(.bordered)
+                    .keyboardShortcut(.init("n"), modifiers: .command)
                     .padding(.trailing, 12)
                 }
                 .padding(.top, 8)
@@ -1183,7 +1186,7 @@ struct ChatDetailView: View {
             }
             switch action {
             case .enter, .keypadEnter:
-                // ↩ 发送；⇧↩ 换行；⌘↩ 也发送
+                // ↩ 发送；⇧↩ 换行（保留本地处理）；⌘↩ 由 .keyboardShortcut 处理
                 if mods.contains(.shift) && !mods.contains(.command) {
                     viewModel.input += "\n"
                     return true
@@ -1193,28 +1196,64 @@ struct ChatDetailView: View {
             case .escape:
                 // 不再隐藏整个 App，由面板或默认处理
                 return false
-            case .d where mods.contains(.command):
-                Task { await MainActor.run { viewModel.clearHistory() } }
-                return true
             case .period where mods.contains(.command):
                 viewModel.stopStreaming()
                 return true
-            case .n where mods.contains(.command):
-                viewModel.startNewSession()
-                return true
-            case .k where mods.contains(.command):
-                actionsMode = .root
-                withAnimation(.spring(response: 0.2, dampingFraction: 0.9)) { showQuickActions.toggle() }
-                return true
-            case .r where mods.contains(.command):
-                Task { await viewModel.regenerateLast() }
-                return true
-            case .c where mods.contains([.command, .shift]):
-                viewModel.copyLastReply(); return true
-            case .v where mods.contains([.command, .shift]):
-                viewModel.useLastReply(); return true
             default:
                 return false
+            }
+        }
+        // Hidden shortcut host for common actions, so shortcuts work reliably (even with the palette open)
+        .overlay(alignment: .topLeading) {
+            Group {
+                // Regenerate: ⌘R
+                Button("") {
+                    if showQuickActions { withAnimation(.easeOut(duration: 0.15)) { showQuickActions = false } }
+                    Task { await viewModel.regenerateLast() }
+                }
+                    .keyboardShortcut(.init("r"), modifiers: .command)
+                    .opacity(0.001)
+                    .frame(width: 0, height: 0)
+                // Clear: ⌘D (in addition to toolbar binding)
+                Button("") {
+                    if showQuickActions { withAnimation(.easeOut(duration: 0.15)) { showQuickActions = false } }
+                    viewModel.clearHistory()
+                }
+                    .keyboardShortcut(.init("d"), modifiers: .command)
+                    .opacity(0.001)
+                    .frame(width: 0, height: 0)
+                // New session: ⌘N
+                Button("") {
+                    if showQuickActions { withAnimation(.easeOut(duration: 0.15)) { showQuickActions = false } }
+                    viewModel.startNewSession()
+                }
+                    .keyboardShortcut(.init("n"), modifiers: .command)
+                    .opacity(0.001)
+                    .frame(width: 0, height: 0)
+                // Copy last reply: ⇧⌘C
+                Button("") {
+                    if showQuickActions { withAnimation(.easeOut(duration: 0.15)) { showQuickActions = false } }
+                    viewModel.copyLastReply()
+                }
+                    .keyboardShortcut(.init("c"), modifiers: [.command, .shift])
+                    .opacity(0.001)
+                    .frame(width: 0, height: 0)
+                // Use last reply: ⇧⌘V
+                Button("") {
+                    if showQuickActions { withAnimation(.easeOut(duration: 0.15)) { showQuickActions = false } }
+                    viewModel.useLastReply()
+                }
+                    .keyboardShortcut(.init("v"), modifiers: [.command, .shift])
+                    .opacity(0.001)
+                    .frame(width: 0, height: 0)
+                // Toggle quick actions: ⌘K
+                Button("") {
+                    actionsMode = .root
+                    withAnimation(.spring(response: 0.2, dampingFraction: 0.9)) { showQuickActions.toggle() }
+                }
+                .keyboardShortcut(.init("k"), modifiers: .command)
+                .opacity(0.001)
+                .frame(width: 0, height: 0)
             }
         }
         // Quick Actions overlay attached at the view root, so遮罩覆盖全窗口
@@ -1275,11 +1314,13 @@ private struct InputBar: View {
                     }
                     .help("发送 ↩ / ⌘↩，换行 ⇧↩")
                     .disabled(viewModel.isSending)
+                    .keyboardShortcut(.return, modifiers: .command)
                 }
                 Button(action: { openQuickActions() }) {
                     Image(systemName: "ellipsis.circle")
                 }
                 .help("打开动作 ⌘K")
+                .keyboardShortcut(.init("k"), modifiers: .command)
             }
 
             // Small hint row
@@ -1485,6 +1526,31 @@ private struct QuickActions: View {
             .onChange(of: items.count) { _ in selection = min(selection, max(0, items.count - 1)) }
             .background(QuickActionsKeyCatcher(handle: { event in
                 guard let a = event.action else { return false }
+                let mods = event.modifierFlags
+                // Support system shortcuts while palette is open; perform action and dismiss.
+                if mods.contains(.command) {
+                    switch a {
+                    case .r:
+                        Task { await viewModel.regenerateLast() }
+                        dismiss(); return true
+                    case .d:
+                        viewModel.clearHistory()
+                        dismiss(); return true
+                    case .n:
+                        viewModel.startNewSession()
+                        dismiss(); return true
+                    case .k:
+                        dismiss(); return true
+                    case .enter, .keypadEnter:
+                        Task { await viewModel.send() }
+                        dismiss(); return true
+                    case .c:
+                        if mods.contains(.shift) { viewModel.copyLastReply(); dismiss(); return true }
+                    case .v:
+                        if mods.contains(.shift) { viewModel.useLastReply(); dismiss(); return true }
+                    default: break
+                    }
+                }
                 switch a {
                 case .upArrow:
                     selection = max(0, selection - 1); return true
@@ -1508,7 +1574,8 @@ private struct QuickActions: View {
                 }
             }))
         }
-        .transition(.opacity.combined(with: .scale))
+        // Remove scale from transition to avoid intermittent layout jitter of the search row
+        .transition(.opacity)
     }
 
     private func dismiss() { withAnimation(.easeOut(duration: 0.15)) { isPresented = false } }
