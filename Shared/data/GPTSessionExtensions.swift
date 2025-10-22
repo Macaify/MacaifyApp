@@ -22,6 +22,19 @@ extension GPTSession {
         get { return archived_ }
         set { archived_ = newValue }
     }
+    // Persisted context for this session
+    var contextSnippet: String {
+        get { return contextSnippet_ ?? "" }
+        set { contextSnippet_ = newValue }
+    }
+    var contextSourceAppName: String {
+        get { return contextSourceAppName_ ?? "" }
+        set { contextSourceAppName_ = newValue }
+    }
+    var contextSourceBundleId: String {
+        get { return contextSourceBundleId_ ?? "" }
+        set { contextSourceBundleId_ = newValue }
+    }
     var agentConversation: GPTConversation? {
         get { return agent }
         set { agent = newValue }
@@ -39,5 +52,8 @@ extension GPTSession {
         self.updatedAt = Date()
         self.archived = false
         self.agentConversation = agent
+        self.contextSnippet = ""
+        self.contextSourceAppName = ""
+        self.contextSourceBundleId = ""
     }
 }

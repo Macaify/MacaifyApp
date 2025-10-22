@@ -46,20 +46,34 @@ struct OnKeyPressed: ViewModifier {
         class Coordinator: NSObject {
             var parent: KeyboardListener
             var nsView: NSView?
+            var monitor: Any?
 
             init(_ parent: KeyboardListener) {
                 self.parent = parent
                 super.init()
-                NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-                    print("get event \(event.keyCode)")
-                    if parent.target == PathManager.shared.top {
-                        print("dealing event \(event.keyCode)")
+                monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                    // 仅在视图所在 case 与当前栈顶 case 相同时处理（忽略关联值差异）
+                    let tA = parent.target
+                    let tB = PathManager.shared.top
+                    let sameCase: Bool = {
+                        switch (tA, tB) {
+                        case (.some(.main), .some(.main)), (.some(.setting), .some(.setting)), (.some(.addCommand), .some(.addCommand)), (.some(.playground), .some(.playground)), (.some(.editCommand), .some(.editCommand)), (.some(.chat), .some(.chat)):
+                            return true
+                        default:
+                            return false
+                        }
+                    }()
+                    if sameCase {
                         if parent.keyAction == nil || event.action == parent.keyAction {
                             return parent.callback(event) ? nil : event
                         }
                     }
                     return event
                 }
+            }
+
+            deinit {
+                if let m = monitor { NSEvent.removeMonitor(m) }
             }
         }
     }

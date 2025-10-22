@@ -34,6 +34,10 @@
         <attribute name="updatedAt_" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="title_" attributeType="String" defaultValueString=""/>
         <attribute name="uuid_" attributeType="UUID" usesScalarValueType="NO"/>
+        <!-- Persisted chat context for this session -->
+        <attribute name="contextSnippet_" optional="YES" attributeType="String" defaultValueString=""/>
+        <attribute name="contextSourceAppName_" optional="YES" attributeType="String" defaultValueString=""/>
+        <attribute name="contextSourceBundleId_" optional="YES" attributeType="String" defaultValueString=""/>
         <relationship name="agent" maxCount="1" deletionRule="Nullify" destinationEntity="GPTConversation" inverseName="sessions_" inverseEntity="GPTConversation"/>
         <relationship name="messages" toMany="YES" deletionRule="Nullify" ordered="YES" destinationEntity="GPTAnswer" inverseName="session" inverseEntity="GPTAnswer"/>
     </entity>

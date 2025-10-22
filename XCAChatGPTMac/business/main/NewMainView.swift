@@ -217,6 +217,13 @@ final class ChatSessionViewModel: ObservableObject {
         // Fetch messages for selected session
         if selectedSession >= sess.count { selectedSession = max(0, sess.count - 1) }
         let target = sess[selectedSession]
+        // Load persisted context for this session
+        let snip = target.contextSnippet.trimmingCharacters(in: .whitespacesAndNewlines)
+        contextSnippet = snip.isEmpty ? nil : snip
+        let srcName = target.contextSourceAppName.trimmingCharacters(in: .whitespacesAndNewlines)
+        contextSourceAppName = srcName.isEmpty ? nil : srcName
+        let srcBid = target.contextSourceBundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+        contextSourceBundleId = srcBid.isEmpty ? nil : srcBid
         let container = PersistenceController.shared.container
         let targetID = target.objectID
         let convID = conv.objectID
@@ -367,7 +374,10 @@ final class ChatSessionViewModel: ObservableObject {
         }
         if !sessions.isEmpty { sessions[selectedSession].end = allMessages.count }
         isSending = false
-        if !contextPinned { contextSnippet = nil }
+        if !contextPinned {
+            contextSnippet = nil
+            persistContextToCurrentSession()
+        }
     }
 
     @MainActor
@@ -394,6 +404,8 @@ final class ChatSessionViewModel: ObservableObject {
     }
     func injectContext(_ text: String) {
         contextSnippet = text
+        // Persist immediately if current session exists
+        persistContextToCurrentSession()
     }
 
     @MainActor
@@ -555,7 +567,13 @@ final class ChatSessionViewModel: ObservableObject {
 
     private func ensureSessionReady() {
         guard pendingNewSession || sessions.isEmpty || selectedSession >= sessionIDs.count else { return }
-        if let _ = PersistenceController.shared.createSession(conversation: conv, title: "新会话") {
+        if let created = PersistenceController.shared.createSession(conversation: conv, title: "新会话") {
+            // Persist current context into the new session
+            created.contextSnippet = (contextSnippet ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            created.contextSourceAppName = (contextSourceAppName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            created.contextSourceBundleId = (contextSourceBundleId ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            created.updatedAt = Date()
+            do { try created.managedObjectContext?.save() } catch { print("save session context error:", error) }
             let sess = PersistenceController.shared.loadSessions(conversation: conv).filter { !$0.archived }
             sessionIDs = sess.map { $0.objectID }
             sessions = sess.map { SessionInfo(start: 0, end: 0, title: $0.title) }
@@ -587,6 +605,20 @@ final class ChatSessionViewModel: ObservableObject {
         }
         block += "<selectedText>\n\(raw)\n</selectedText>\n" + "</context>"
         return block
+    }
+
+    // Persist current context fields into the selected session (if available and not pending)
+    private func persistContextToCurrentSession() {
+        guard !pendingNewSession, selectedSession < sessionIDs.count else { return }
+        let ctx = PersistenceController.shared.container.viewContext
+        let oid = sessionIDs[selectedSession]
+        if let s = try? ctx.existingObject(with: oid) as? GPTSession {
+            s.contextSnippet = (contextSnippet ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            s.contextSourceAppName = (contextSourceAppName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            s.contextSourceBundleId = (contextSourceBundleId ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            s.updatedAt = Date()
+            do { try ctx.save() } catch { print("persistContext error:", error) }
+        }
     }
 
     @MainActor
@@ -796,6 +828,9 @@ struct ChatDetailView: View {
     @State private var pendingDeleteIndex: Int? = nil
     @State private var showDeleteConfirm: Bool = false
     @State private var contextCollapsed: Bool = true
+    // Quick actions palette state
+    @State private var showQuickActions: Bool = false
+    @State private var actionsMode: QuickActions.Mode = .root
     var body: some View {
         VStack(spacing: 0) {
             // Sessions bar
@@ -1114,61 +1149,20 @@ struct ChatDetailView: View {
                 }
             }
             Divider()
-            HStack(alignment: .bottom, spacing: 8) {
-                TextEditor(text: $viewModel.input)
-                    .frame(minHeight: 38, maxHeight: 140)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.2)))
-                if viewModel.isSending {
-                    Button(action: { viewModel.stopStreaming() }) {
-                        Image(systemName: "stop.circle.fill").foregroundColor(.red)
-                    }
-                } else {
-                    Button(action: { Task { await viewModel.send() } }) {
-                        Image(systemName: "paperplane")
-                    }
-                    .disabled(viewModel.isSending)
-                }
-                Menu {
-                    Button("复制最后回答", systemImage: "doc.on.doc") { viewModel.copyLastReply() }
-                    Button("粘贴到前台应用", systemImage: "rectangle.and.text.magnifyingglass") { viewModel.useLastReply() }
-                    Button("重新生成", systemImage: "arrow.clockwise") { Task { await viewModel.regenerateLast() } }
-                    Divider()
-                    if let store {
-                        Menu("用其他 Agent 运行…", systemImage: "bolt.horizontal.circle") {
-                            ForEach(store.bots, id: \.id) { other in
-                                if other.id != bot.id {
-                                    Button(other.name.isEmpty ? other.id.uuidString : other.name) {
-                                        Task { await viewModel.runWithAgent(agent: other, using: viewModel.input.isEmpty ? nil : viewModel.input) }
-                                    }
-                                }
-                            }
-                        }
-                        Menu("用其他 Agent 新开会话…", systemImage: "arrow.uturn.forward") {
-                            ForEach(store.bots, id: \.id) { other in
-                                if other.id != bot.id {
-                                    Button(other.name.isEmpty ? other.id.uuidString : other.name) {
-                                        store.selectedID = other.id
-                                        if let chosen = store.selected {
-                                            viewModel.input = viewModel.input.isEmpty ? (viewModel.messages.last(where: { $0.sender == .user })?.text ?? "") : viewModel.input
-                                            viewModel.updateConversation(chosen)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        Divider()
-                    }
-                    Button("清空聊天", systemImage: "trash") { viewModel.clearHistory() }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
-            }
-            .padding(12)
+            InputBar(viewModel: viewModel, bot: bot, store: store, openQuickActions: {
+                actionsMode = .root
+                withAnimation(.spring(response: 0.2, dampingFraction: 0.9)) { showQuickActions = true }
+            })
+                .padding(12)
         }
         .navigationTitle(bot.name.isEmpty ? "Chat" : bot.name)
         // 若是临时会话，给标题加个“(未开始)”提示，避免误解仍在上一会话
         .navigationSubtitle(viewModel.pendingNewSession ? "未开始的临时会话" : "")
         .onAppear { viewModel.updateConversation(bot) }
+        .onChange(of: bot.id) { _ in
+            // 切换到其他 Agent 时，关闭快捷面板
+            if showQuickActions { showQuickActions = false }
+        }
         .alert("确认删除会话？", isPresented: $showDeleteConfirm) {
             Button("取消", role: .cancel) { pendingDeleteIndex = nil }
             Button("删除", role: .destructive) {
@@ -1182,26 +1176,23 @@ struct ChatDetailView: View {
         .onKeyPressed { event in
             guard let action = event.action else { return false }
             let mods = event.modifierFlags
+            // 当快捷动作面板显示时，不拦截按键，交给面板处理；仅处理 Esc 关闭面板
+            if showQuickActions {
+                if action == .escape { withAnimation { showQuickActions = false } ; return true }
+                return false
+            }
             switch action {
             case .enter, .keypadEnter:
-                if mods.contains(.command) {
-                    if let last = viewModel.messages.last(where: { $0.sender == .assistant && !$0.text.isEmpty }) {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(last.text, forType: .string)
-                        NSApp.hide(nil)
-                        return true
-                    }
-                    return false
-                } else if mods.contains(.shift) {
+                // ↩ 发送；⇧↩ 换行；⌘↩ 也发送
+                if mods.contains(.shift) && !mods.contains(.command) {
                     viewModel.input += "\n"
                     return true
-                } else {
-                    Task { await viewModel.send() }
-                    return true
                 }
-            case .escape:
-                NSApp.hide(nil)
+                Task { await viewModel.send() }
                 return true
+            case .escape:
+                // 不再隐藏整个 App，由面板或默认处理
+                return false
             case .d where mods.contains(.command):
                 Task { await MainActor.run { viewModel.clearHistory() } }
                 return true
@@ -1211,8 +1202,25 @@ struct ChatDetailView: View {
             case .n where mods.contains(.command):
                 viewModel.startNewSession()
                 return true
+            case .k where mods.contains(.command):
+                actionsMode = .root
+                withAnimation(.spring(response: 0.2, dampingFraction: 0.9)) { showQuickActions.toggle() }
+                return true
+            case .r where mods.contains(.command):
+                Task { await viewModel.regenerateLast() }
+                return true
+            case .c where mods.contains([.command, .shift]):
+                viewModel.copyLastReply(); return true
+            case .v where mods.contains([.command, .shift]):
+                viewModel.useLastReply(); return true
             default:
                 return false
+            }
+        }
+        // Quick Actions overlay attached at the view root, so遮罩覆盖全窗口
+        .overlay {
+            if showQuickActions {
+                QuickActions(isPresented: $showQuickActions, mode: actionsMode, viewModel: viewModel, bot: bot, store: store)
             }
         }
     }
@@ -1231,6 +1239,320 @@ struct ChatDetailView: View {
             Image(systemName: "app.fill")
                 .font(.system(size: 12, weight: .semibold))
         }
+    }
+}
+
+// MARK: - Input Bar with shortcuts and Quick Actions
+private struct InputBar: View {
+    @ObservedObject var viewModel: ChatSessionViewModel
+    let bot: GPTConversation
+    var store: BotStore?
+    var openQuickActions: () -> Void
+
+    var body: some View {
+        VStack(spacing: 6) {
+            HStack(alignment: .bottom, spacing: 8) {
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: $viewModel.input)
+                        .frame(minHeight: 38, maxHeight: 140)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.2)))
+                    if viewModel.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("发送消息…")
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 8)
+                            .padding(.leading, 6)
+                    }
+                }
+                if viewModel.isSending {
+                    Button(action: { viewModel.stopStreaming() }) {
+                        Image(systemName: "stop.circle.fill").foregroundColor(.red)
+                    }
+                    .help("停止生成 ⌘.")
+                    .keyboardShortcut(.init("."), modifiers: .command)
+                } else {
+                    Button(action: { Task { await viewModel.send() } }) {
+                        Image(systemName: "paperplane")
+                    }
+                    .help("发送 ↩ / ⌘↩，换行 ⇧↩")
+                    .disabled(viewModel.isSending)
+                }
+                Button(action: { openQuickActions() }) {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .help("打开动作 ⌘K")
+            }
+
+            // Small hint row
+            HStack(spacing: 12) {
+                Label("发送 ↩", systemImage: "arrowshape.turn.up.right")
+                    .labelStyle(.iconOnly)
+                    .foregroundStyle(.secondary)
+                Text("发送 ↩ / ⌘↩ · 换行 ⇧↩ · 动作 ⌘K")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }.padding(.horizontal, 4)
+        }
+    }
+
+    
+}
+
+// Helper已移除：改为在 ChatDetailView 顶层承载面板，使遮罩覆盖全窗口
+
+// MARK: - Raycast‑style quick actions palette
+private struct QuickActions: View {
+    enum Mode { case root, runWithAgent, newChatWithAgent }
+    @Binding var isPresented: Bool
+    var mode: Mode
+    @ObservedObject var viewModel: ChatSessionViewModel
+    let bot: GPTConversation
+    var store: BotStore?
+
+    @State private var query: String = ""
+    @State private var selection: Int = 0
+    @FocusState private var focusSearch: Bool
+    @State private var currentMode: Mode = .root
+
+    struct Item: Identifiable {
+        let id = UUID()
+        var title: String
+        var subtitle: String? = nil
+        var systemImage: String
+        var keyHint: String? = nil
+        enum Group { case message, clipboard, agent, session, danger }
+        var group: Group
+        // For items that should open a sublist via →
+        var opensSubmenu: Mode? = nil
+        var action: () -> Void
+    }
+
+    private var baseItems: [Item] {
+        var arr: [Item] = []
+        if !viewModel.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            arr.append(Item(title: "发送", systemImage: "paperplane", keyHint: "↩", group: .message, action: { Task { await viewModel.send() }; dismiss() }))
+        }
+        arr.append(Item(title: "重新生成", systemImage: "arrow.clockwise", keyHint: "⌘R", group: .message, action: { Task { await viewModel.regenerateLast() }; dismiss() }))
+        arr.append(Item(title: "复制最后回答", systemImage: "doc.on.doc", keyHint: "⇧⌘C", group: .clipboard, action: { viewModel.copyLastReply(); dismiss() }))
+        arr.append(Item(title: "粘贴到前台应用", systemImage: "rectangle.and.text.magnifyingglass", keyHint: "⇧⌘V", group: .clipboard, action: { viewModel.useLastReply(); dismiss() }))
+        arr.append(Item(title: "用其他 Agent 运行…", systemImage: "bolt.horizontal.circle", keyHint: "→", group: .agent, opensSubmenu: .runWithAgent, action: { switchMode(.runWithAgent) }))
+        arr.append(Item(title: "用其他 Agent 新开会话…", systemImage: "arrow.uturn.forward", keyHint: "→", group: .agent, opensSubmenu: .newChatWithAgent, action: { switchMode(.newChatWithAgent) }))
+        arr.append(Item(title: "清空聊天", systemImage: "trash", keyHint: "⌘D", group: .danger, action: { viewModel.clearHistory(); dismiss() }))
+        return arr
+    }
+
+    private var agentItems: [Item] {
+        let list = (store?.bots ?? []).filter { $0.id != bot.id }
+        switch currentMode {
+        case .runWithAgent:
+            return list.map { other in
+                Item(title: other.name.isEmpty ? other.id.uuidString : other.name, subtitle: "运行当前输入/最近一次提问", systemImage: "bolt.fill", keyHint: nil, group: .agent, action: {
+                    Task { await viewModel.runWithAgent(agent: other, using: viewModel.input.isEmpty ? nil : viewModel.input) }
+                    dismiss()
+                })
+            }
+        case .newChatWithAgent:
+            return list.map { other in
+                Item(title: other.name.isEmpty ? other.id.uuidString : other.name, subtitle: "切换到该 Agent 并开始新会话", systemImage: "arrow.uturn.right.circle.fill", keyHint: nil, group: .agent, action: {
+                    if let store {
+                        store.selectedID = other.id
+                        if let chosen = store.selected {
+                            viewModel.input = viewModel.input.isEmpty ? (viewModel.messages.last(where: { $0.sender == .user })?.text ?? "") : viewModel.input
+                            viewModel.updateConversation(chosen)
+                        }
+                    }
+                    dismiss()
+                })
+            }
+        default:
+            return []
+        }
+    }
+
+    private var items: [Item] {
+        let source = (currentMode == .root) ? baseItems : agentItems
+        if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return source }
+        let q = query.lowercased()
+        return source.filter { $0.title.lowercased().contains(q) || ($0.subtitle?.lowercased().contains(q) ?? false) }
+    }
+
+    private func groupTitle(_ g: Item.Group) -> String {
+        switch g {
+        case .message: return "消息"
+        case .clipboard: return "剪贴板"
+        case .agent: return "Agent"
+        case .session: return "会话"
+        case .danger: return "危险"
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            // 透明点击区域：不再做半透明遮罩
+            Color.clear
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { dismiss() }
+            VStack(spacing: 6) {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                    TextField("搜索动作…", text: $query)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 14))
+                        .focused($focusSearch)
+                        .onAppear { DispatchQueue.main.async { focusSearch = true } }
+                        .onSubmit { if items.indices.contains(selection) { items[selection].action() } }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Color(nsColor: .textBackgroundColor)))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.gray.opacity(0.15)))
+
+                Divider().padding(.horizontal, 2).opacity(0.25)
+
+                ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 6) {
+                        if items.isEmpty {
+                            Text("No actions")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.vertical, 24)
+                        }
+                        if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && currentMode != .root {
+                            Text(currentMode == .runWithAgent ? "选择 Agent 运行" : "选择 Agent 新开会话")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 10)
+                                .padding(.bottom, 2)
+                        }
+                        ForEach(Array(items.enumerated()), id: \.element.id) { idx, it in
+                            if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && currentMode == .root && (idx == 0 || items[idx-1].group != it.group) {
+                                Text(groupTitle(it.group))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.top, idx == 0 ? 0 : 4)
+                                    .padding(.bottom, 2)
+                                    .padding(.horizontal, 10)
+                            }
+                            Button(action: { it.action() }) {
+                                HStack(spacing: 10) {
+                                    Image(systemName: it.systemImage)
+                                        .frame(width: 16)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(it.title)
+                                            .foregroundStyle(it.group == .danger ? Color.red : Color.primary)
+                                        if let s = it.subtitle { Text(s).font(.caption).foregroundStyle(.secondary) }
+                                    }
+                                    Spacer()
+                                    if let hint = it.keyHint { KeyHint(hint) }
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .contentShape(RoundedRectangle(cornerRadius: 8))
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(selection == idx ? Color.accentColor.opacity(0.15) : Color.clear)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .id(it.id)
+                        }
+                    }
+                    .padding(.horizontal, 2)
+                }
+                // 自动滚动到选中项
+                .onChange(of: selection) { newValue in
+                    if items.indices.contains(newValue) {
+                        let target = items[newValue].id
+                        withAnimation(.easeInOut(duration: 0.15)) { proxy.scrollTo(target, anchor: .center) }
+                    }
+                }
+                }
+                .frame(maxHeight: 320)
+            }
+            .padding(12)
+            .frame(width: 420)
+            .background(.regularMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.black.opacity(0.06), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .shadow(color: .black.opacity(0.15), radius: 24, x: 0, y: 8)
+            .onAppear { selection = 0; query = ""; currentMode = mode }
+            .onChange(of: items.count) { _ in selection = min(selection, max(0, items.count - 1)) }
+            .background(QuickActionsKeyCatcher(handle: { event in
+                guard let a = event.action else { return false }
+                switch a {
+                case .upArrow:
+                    selection = max(0, selection - 1); return true
+                case .downArrow:
+                    selection = min(max(0, items.count - 1), selection + 1); return true
+                case .rightArrow:
+                    if currentMode == .root, items.indices.contains(selection), let submenu = items[selection].opensSubmenu {
+                        switchMode(submenu); return true
+                    }
+                    return false
+                case .leftArrow:
+                    if currentMode != .root { switchMode(.root); return true }
+                    return false
+                case .enter, .keypadEnter:
+                    if items.indices.contains(selection) { items[selection].action() }
+                    return true
+                case .escape:
+                    dismiss(); return true
+                default:
+                    return false
+                }
+            }))
+        }
+        .transition(.opacity.combined(with: .scale))
+    }
+
+    private func dismiss() { withAnimation(.easeOut(duration: 0.15)) { isPresented = false } }
+    private func switchMode(_ next: Mode) {
+        withAnimation(.easeInOut(duration: 0.15)) {
+            currentMode = next
+            query = ""
+            selection = 0
+        }
+    }
+}
+
+// A local key catcher that doesn't depend on PathManager case matching.
+private struct QuickActionsKeyCatcher: NSViewRepresentable {
+    var handle: (NSEvent) -> Bool
+    func makeCoordinator() -> Coordinator { Coordinator(handle) }
+    func makeNSView(context: Context) -> NSView { NSView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+    class Coordinator: NSObject {
+        var monitor: Any?
+        var handle: (NSEvent) -> Bool
+        init(_ handle: @escaping (NSEvent)->Bool) {
+            self.handle = handle
+            super.init()
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
+                guard let self else { return e }
+                return self.handle(e) ? nil : e
+            }
+        }
+        deinit { if let m = monitor { NSEvent.removeMonitor(m) } }
+    }
+}
+
+private struct KeyHint: View { var text: String; init(_ text: String) { self.text = text }
+    var body: some View {
+        Text(text)
+            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(
+                RoundedRectangle(cornerRadius: 5)
+                    .fill(Color.gray.opacity(0.16))
+                    .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.black.opacity(0.05)))
+            )
     }
 }
 
