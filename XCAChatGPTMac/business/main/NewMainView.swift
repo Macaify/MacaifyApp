@@ -1196,6 +1196,12 @@ struct ChatDetailView: View {
             case .escape:
                 // 不再隐藏整个 App，由面板或默认处理
                 return false
+            case .c where mods.contains(.option) && mods.contains(.shift):
+                viewModel.copyLastReply()
+                return true
+            case .v where mods.contains(.option) && mods.contains(.shift):
+                viewModel.useLastReply()
+                return true
             case .period where mods.contains(.command):
                 viewModel.stopStreaming()
                 return true
@@ -1230,20 +1236,20 @@ struct ChatDetailView: View {
                     .keyboardShortcut(.init("n"), modifiers: .command)
                     .opacity(0.001)
                     .frame(width: 0, height: 0)
-                // Copy last reply: ⇧⌘C
+                // Copy last reply: ⌥⇧C
                 Button("") {
                     if showQuickActions { withAnimation(.easeOut(duration: 0.15)) { showQuickActions = false } }
                     viewModel.copyLastReply()
                 }
-                    .keyboardShortcut(.init("c"), modifiers: [.command, .shift])
+                    .keyboardShortcut(.init("c"), modifiers: [.option, .shift])
                     .opacity(0.001)
                     .frame(width: 0, height: 0)
-                // Use last reply: ⇧⌘V
+                // Use last reply: ⌥⇧V
                 Button("") {
                     if showQuickActions { withAnimation(.easeOut(duration: 0.15)) { showQuickActions = false } }
                     viewModel.useLastReply()
                 }
-                    .keyboardShortcut(.init("v"), modifiers: [.command, .shift])
+                    .keyboardShortcut(.init("v"), modifiers: [.option, .shift])
                     .opacity(0.001)
                     .frame(width: 0, height: 0)
                 // Toggle quick actions: ⌘K
@@ -1287,24 +1293,25 @@ private struct InputBar: View {
     let bot: GPTConversation
     var store: BotStore?
     var openQuickActions: () -> Void
+    @State private var inputHeight: CGFloat = ChatTokens.controlHeight
 
     var body: some View {
         VStack(spacing: 6) {
-            HStack(alignment: .bottom, spacing: 8) {
-                ZStack(alignment: .topLeading) {
-                    TextEditor(text: $viewModel.input)
-                        .frame(minHeight: 38, maxHeight: 140)
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.2)))
-                    if viewModel.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text("发送消息…")
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 8)
-                            .padding(.leading, 6)
-                    }
-                }
+            HStack(alignment: .center, spacing: 8) {
+                GrowingTextView(
+                    placeholder: "发送消息…",
+                    text: $viewModel.input,
+                    measuredHeight: $inputHeight,
+                    minHeight: ChatTokens.controlHeight,
+                    maxHeight: 140
+                )
+                .frame(height: inputHeight)
+                .animation(.easeInOut(duration: 0.16), value: inputHeight)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.2)))
                 if viewModel.isSending {
                     Button(action: { viewModel.stopStreaming() }) {
-                        Image(systemName: "stop.circle.fill").foregroundColor(.red)
+                        Image(systemName: "stop.circle.fill")
+                            .foregroundColor(.red)
                     }
                     .help("停止生成 ⌘.")
                     .keyboardShortcut(.init("."), modifiers: .command)
@@ -1317,7 +1324,9 @@ private struct InputBar: View {
                     .keyboardShortcut(.return, modifiers: .command)
                 }
                 Button(action: { openQuickActions() }) {
-                    Image(systemName: "ellipsis.circle")
+                    Text("操作 ⌘K")
+                        .font(.system(size: 13, weight: .semibold))
+                        .padding(.horizontal, 4)
                 }
                 .help("打开动作 ⌘K")
                 .keyboardShortcut(.init("k"), modifiers: .command)
@@ -1374,8 +1383,8 @@ private struct QuickActions: View {
             arr.append(Item(title: "发送", systemImage: "paperplane", keyHint: "↩", group: .message, action: { Task { await viewModel.send() }; dismiss() }))
         }
         arr.append(Item(title: "重新生成", systemImage: "arrow.clockwise", keyHint: "⌘R", group: .message, action: { Task { await viewModel.regenerateLast() }; dismiss() }))
-        arr.append(Item(title: "复制最后回答", systemImage: "doc.on.doc", keyHint: "⇧⌘C", group: .clipboard, action: { viewModel.copyLastReply(); dismiss() }))
-        arr.append(Item(title: "粘贴到前台应用", systemImage: "rectangle.and.text.magnifyingglass", keyHint: "⇧⌘V", group: .clipboard, action: { viewModel.useLastReply(); dismiss() }))
+        arr.append(Item(title: "复制最后回答", systemImage: "doc.on.doc", keyHint: "⌥⇧C", group: .clipboard, action: { viewModel.copyLastReply(); dismiss() }))
+        arr.append(Item(title: "粘贴到前台应用", systemImage: "rectangle.and.text.magnifyingglass", keyHint: "⌥⇧V", group: .clipboard, action: { viewModel.useLastReply(); dismiss() }))
         arr.append(Item(title: "用其他 Agent 运行…", systemImage: "bolt.horizontal.circle", keyHint: "→", group: .agent, opensSubmenu: .runWithAgent, action: { switchMode(.runWithAgent) }))
         arr.append(Item(title: "用其他 Agent 新开会话…", systemImage: "arrow.uturn.forward", keyHint: "→", group: .agent, opensSubmenu: .newChatWithAgent, action: { switchMode(.newChatWithAgent) }))
         arr.append(Item(title: "清空聊天", systemImage: "trash", keyHint: "⌘D", group: .danger, action: { viewModel.clearHistory(); dismiss() }))
@@ -1545,9 +1554,9 @@ private struct QuickActions: View {
                         Task { await viewModel.send() }
                         dismiss(); return true
                     case .c:
-                        if mods.contains(.shift) { viewModel.copyLastReply(); dismiss(); return true }
+                        if mods.contains(.option) && mods.contains(.shift) { viewModel.copyLastReply(); dismiss(); return true }
                     case .v:
-                        if mods.contains(.shift) { viewModel.useLastReply(); dismiss(); return true }
+                        if mods.contains(.option) && mods.contains(.shift) { viewModel.useLastReply(); dismiss(); return true }
                     default: break
                     }
                 }

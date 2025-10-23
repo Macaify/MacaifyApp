@@ -205,6 +205,7 @@
 		8B91C016298ADC9D0079AF26 /* MessageRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B91C015298ADC9D0079AF26 /* MessageRow.swift */; };
 		8B91C018298ADF4E0079AF26 /* DotLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B91C017298ADF4E0079AF26 /* DotLoadingView.swift */; };
 		8B91C01A298ADF7F0079AF26 /* MessageRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B91C019298ADF7F0079AF26 /* MessageRowView.swift */; };
+        69C1A0B32D13005000AA0001 /* GrowingTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69C1A0B22D13005000AA0001 /* GrowingTextView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -393,6 +394,7 @@
 		8B91C017298ADF4E0079AF26 /* DotLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotLoadingView.swift; sourceTree = "<group>"; };
 		8B91C019298ADF7F0079AF26 /* MessageRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageRowView.swift; sourceTree = "<group>"; };
 		69F0AA002EA8FACE00AA1001 /* SettingsUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = design/SettingsUI.swift; sourceTree = "<group>"; };
+        69C1A0B22D13005000AA0001 /* GrowingTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = components/GrowingTextView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -822,6 +824,7 @@
 				696B6BDE29FAD22B00845C71 /* Globals.swift */,
 				696B6BE029FAD8DB00845C71 /* CommandKeyView.swift */,
 				69F0AA002EA8FACE00AA1001 /* SettingsUI.swift */,
+                69C1A0B22D13005000AA0001 /* GrowingTextView.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -1275,6 +1278,7 @@
 				696B6BE829FAEB9C00845C71 /* KeyUtils.swift in Sources */,
 				69B0AA122D0001A000AA0001 /* KeychainHelper.swift in Sources */,
 				69F0AA012EA8FACE00AA1001 /* SettingsUI.swift in Sources */,
+                69C1A0B32D13005000AA0001 /* GrowingTextView.swift in Sources */,
                 69C1A0B12D13000100AA0001 /* WindowBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
