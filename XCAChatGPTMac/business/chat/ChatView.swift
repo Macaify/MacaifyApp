@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import BetterAuth
 //import AlertToast
 
 struct ChatView: View {
@@ -18,8 +19,9 @@ struct ChatView: View {
         }
     }
     var bottomBar: some View {
-        HStack(alignment: .center, spacing: 8) {
-            PlainButton(icon: "clear", label: "删除记录 ⌘D", backgroundColor: ChatTokens.controlBackground, pressedBackgroundColor: ChatTokens.controlBackground.opacity(0.9), shortcut: .init("d"), modifiers: .command, autoShowShortcutHelp: false, showLabel: false) {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .center, spacing: 8) {
+                PlainButton(icon: "clear", label: "删除记录 ⌘D", backgroundColor: ChatTokens.controlBackground, pressedBackgroundColor: ChatTokens.controlBackground.opacity(0.9), shortcut: .init("d"), modifiers: .command, autoShowShortcutHelp: false, showLabel: false) {
                 vm.clearMessages()
             }
             .help("删除聊天记录 ⌘D")
@@ -71,6 +73,16 @@ struct ChatView: View {
                     .opacity(vm.messages.last?.responseText?.isEmpty ?? true ? 0.5 : 1)
                 }
             }
+            }
+            // Session-scoped model selector below the input row, smaller font
+            SessionModelPickerButton(bot: conversation, onPicked: { updated in
+                updated.save()
+                vm.updateAPI(api: updated.API)
+            }, openBotSettings: {
+                pathManager.to(target: .editCommand(command: conversation))
+            })
+            .font(.caption)
+            .help(String(localized: "选择模型"))
         }
         .padding(.horizontal, 8)
     }

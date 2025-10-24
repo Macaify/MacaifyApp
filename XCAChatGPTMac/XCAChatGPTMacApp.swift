@@ -53,6 +53,7 @@ struct XCAChatGPTMacApp: App {
     private var windowView: some Scene {
         WindowGroup(id: "main") {
             MainSplitView()
+                .environmentObject(authClient)
                 .frame(minWidth: 920, minHeight: 600)
                 .onOpenURL { url in
                     // Forward deep links to the OTT plugin

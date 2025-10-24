@@ -120,3 +120,13 @@
 "chat_mode_shortcut" = "Open & Chat Shortcut";
 "edit_mode_help" = "Replaces the selected text in the current app without opening a window.";
 "chat_mode_help" = "Opens Macaify, inserts the selected text, and sends it.";
+"选择模型" = "Choose Model";
+"我的自定义" = "My Custom";
+"全部模型" = "All Models";
+"登录" = "Login";
+"已选" = "Selected";
+"默认模型" = "Default Model";
+"账户模型" = "Account Models";
+"Advanced AI Models" = "Advanced AI Models";
+"Which models are included?" = "Which models are included?";
+"Not now" = "Not now";

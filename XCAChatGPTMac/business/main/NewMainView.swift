@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import BetterAuth
+import BetterAuthBrowserOTT
 import CoreData
 import Defaults
 import AppKit
@@ -823,8 +825,8 @@ struct ChatDetailView: View {
     let bot: GPTConversation
     var openBotSettings: () -> Void = {}
     var store: BotStore? = nil
-    @State private var showModelPicker = false
-    @State private var showSessionPicker = true
+    // Model picker moved to the input bar; remove top-of-window variant
+    // session picker state removed (unused)
     @State private var renamingSessionIndex: Int? = nil
     @State private var renameBuffer: String = ""
     @State private var pendingDeleteIndex: Int? = nil
@@ -999,40 +1001,17 @@ struct ChatDetailView: View {
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
             }
-            // Compact controls bar above chat
-            HStack(spacing: 8) {
-                Button {
-                    showModelPicker.toggle()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "bolt.horizontal.circle")
-                        Text(viewModel.modelLabel.isEmpty ? "选择模型" : viewModel.modelLabel)
-                        Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
-                    }
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.25)))
+            // Model picker moved next to the composer controls
+            if !viewModel.tokenHint.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "gauge.medium")
+                    Text(viewModel.tokenHint).font(.caption).foregroundStyle(.secondary)
+                    Spacer()
                 }
-                .buttonStyle(.plain)
-                .popover(isPresented: $showModelPicker, arrowEdge: .bottom) {
-                    ModelQuickPicker(bot: bot, onPicked: { updated in
-                        updated.save()
-                        viewModel.updateConversation(updated)
-                        showModelPicker = false
-                    }, openBotSettings: openBotSettings)
-                    .frame(width: 420)
-                    .padding(12)
-                }
-                Spacer()
-                if !viewModel.tokenHint.isEmpty {
-                    HStack(spacing: 6) {
-                        Image(systemName: "gauge.medium")
-                        Text(viewModel.tokenHint).font(.caption).foregroundStyle(.secondary)
-                    }
-                }
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
             }
-            .padding(.horizontal, 12)
-            .padding(.top, 8)
-            .padding(.bottom, 4)
             // Config guidance banner
             if let hint = viewModel.configHint {
                 HStack(spacing: 10) {
@@ -1155,6 +1134,8 @@ struct ChatDetailView: View {
             InputBar(viewModel: viewModel, bot: bot, store: store, openQuickActions: {
                 actionsMode = .root
                 withAnimation(.spring(response: 0.2, dampingFraction: 0.9)) { showQuickActions = true }
+            }, openBotSettings: {
+                openBotSettings()
             })
                 .padding(12)
         }
@@ -1293,6 +1274,7 @@ private struct InputBar: View {
     let bot: GPTConversation
     var store: BotStore?
     var openQuickActions: () -> Void
+    var openBotSettings: () -> Void
     @State private var inputHeight: CGFloat = ChatTokens.controlHeight
 
     var body: some View {
@@ -1332,11 +1314,16 @@ private struct InputBar: View {
                 .keyboardShortcut(.init("k"), modifiers: .command)
             }
 
-            // Small hint row
-            HStack(spacing: 12) {
-                Label("发送 ↩", systemImage: "arrowshape.turn.up.right")
-                    .labelStyle(.iconOnly)
-                    .foregroundStyle(.secondary)
+            // Session-scoped model selector below the input, smaller type
+            HStack(alignment: .center) {
+                SessionModelPickerButton(bot: bot, onPicked: { updated in
+                    updated.save()
+                    viewModel.updateConversation(updated)
+                }, openBotSettings: {
+                    openBotSettings()
+                })
+                .font(.caption)
+
                 Text("发送 ↩ / ⌘↩ · 换行 ⇧↩ · 动作 ⌘K")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -1652,93 +1639,4 @@ struct LegacyBotSettingsSheet: View {
 }
 
 // MARK: - Inline, minimal model picker
-private struct ModelQuickPicker: View {
-    @Environment(\.dismiss) private var dismiss
-    @State var bot: GPTConversation
-    var onPicked: (GPTConversation) -> Void
-    var openBotSettings: () -> Void
-
-    private var accountModelTitle: String {
-        let provider = (Defaults[.selectedProvider].isEmpty ? "openai" : Defaults[.selectedProvider])
-        let model = Defaults[.selectedModelId]
-        return model.isEmpty ? "未设置" : "\(provider):\(model)"
-    }
-
-    private var isUsingAccount: Bool { bot.modelSource == "account" }
-    private var currentInstanceId: String { bot.modelInstanceId }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("选择模型").font(.headline)
-            Divider()
-            VStack(alignment: .leading, spacing: 6) {
-                Text("账户默认").font(.caption).foregroundStyle(.secondary)
-                HStack {
-                    Button {
-                        var updated = bot
-                        let m = Defaults[.selectedModelId]
-                        updated.modelSource = "account"
-                        updated.modelId = m.isEmpty ? (LLMModelsManager.shared.modelCategories.first?.models.first?.id ?? "gpt-4o-mini") : m
-                        updated.modelInstanceId = ""
-                        onPicked(updated)
-                    } label: {
-                        HStack {
-                            Image(systemName: isUsingAccount ? "checkmark.circle.fill" : "circle")
-                            Text(accountModelTitle)
-                            Spacer()
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    Spacer(minLength: 0)
-                    Button("更改默认…") {
-                        UserDefaults.standard.set(SettingsTab.providers.rawValue, forKey: "settings.selectedTab")
-                        if #available(macOS 13.0, *) { NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) }
-                    }.buttonStyle(.borderless)
-                }
-            }
-            Divider()
-            VStack(alignment: .leading, spacing: 6) {
-                Text("我的实例").font(.caption).foregroundStyle(.secondary)
-                if ProviderStore.shared.providers.isEmpty {
-                    HStack {
-                        Text("暂无自定义实例").foregroundStyle(.secondary)
-                        Spacer()
-                        Button("新建…") { openBotSettings() }.buttonStyle(.borderless)
-                    }
-                } else {
-                    ForEach(ProviderStore.shared.providers) { p in
-                        Button {
-                            var updated = bot
-                            updated.modelSource = "instance"
-                            updated.modelInstanceId = p.id
-                            updated.modelId = ""
-                            onPicked(updated)
-                        } label: {
-                            HStack(alignment: .firstTextBaseline) {
-                                Image(systemName: (!isUsingAccount && currentInstanceId == p.id) ? "checkmark.circle.fill" : "circle")
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(p.name)
-                                    Text("\(p.provider):\(p.modelId)").font(.caption).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                let hasToken = (ProviderStore.shared.token(for: p.id) ?? "").isEmpty == false
-                                if !hasToken {
-                                    Text("未配置Token").font(.caption2).foregroundStyle(.orange)
-                                }
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    HStack {
-                        Spacer()
-                        Button("管理实例…") {
-                            UserDefaults.standard.set(SettingsTab.providers.rawValue, forKey: "settings.selectedTab")
-                            if #available(macOS 13.0, *) { NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) }
-                        }
-                        .buttonStyle(.borderless)
-                    }
-                }
-            }
-        }
-    }
-}
+// ModelQuickPicker has been inlined as SessionModelPicker (shared), remove legacy inline version

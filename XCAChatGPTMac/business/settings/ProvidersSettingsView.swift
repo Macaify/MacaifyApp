@@ -1,5 +1,7 @@
 import SwiftUI
 import Defaults
+import BetterAuth
+import BetterAuthBrowserOTT
 
 // Represents a concrete, callable model instance supplied by the user.
 // Token is stored in Keychain keyed by `id`.
@@ -44,9 +46,21 @@ struct ProvidersSettingsView: View {
     @StateObject private var store = ProviderStore.shared
     @State private var presentEditor = false
     @State private var editing: CustomModelInstance? = nil
+    @EnvironmentObject private var authClient: BetterAuthClient
+    @StateObject private var modelManager = ModelSelectionManager.shared
+    @State private var showUpgrade: Bool = false
+    @State private var pendingUpgradePlan: MembershipPlan = .pro
+    private let authRedirectURI: String = "macaify://ott"
 
     var body: some View {
         Form {
+            Section {
+                HStack {
+                    Text(String(localized: "默认模型"))
+                    Spacer()
+                    ModelPickerButton(label: String(localized: "选择模型"))
+                }
+            }
             Section {
                 ForEach(store.providers) { p in
                     HStack {
@@ -82,25 +96,71 @@ struct ProvidersSettingsView: View {
                     .foregroundStyle(.secondary)
             }
             Section {
-                ForEach(LLMModelsManager.shared.modelCategories, id: \.name) { cat in
-                    Text(cat.name).font(.callout).foregroundStyle(.secondary)
-                    ForEach(cat.models) { m in
+                if modelManager.isFetching && modelManager.providers.isEmpty {
+                    ProgressView().controlSize(.small)
+                }
+                if let msg = modelManager.errorMessage, modelManager.providers.isEmpty {
+                    Text(msg).foregroundStyle(.secondary)
+                }
+                ForEach(modelManager.providers, id: \.self) { provider in
+                    Text(provider.capitalized).font(.callout).foregroundStyle(.secondary)
+                    ForEach(modelManager.modelsByProvider[provider] ?? []) { item in
                         HStack {
-                            Text(m.name)
+                            Text(item.name)
                             Spacer()
-                            if isDefaultAccount(provider: cat.provider, modelId: m.id) {
-                                Text(String(localized: "默认")).font(.caption2).foregroundStyle(.secondary)
-                            }
-                            Button(String(localized: "设为默认")) { setDefaultAccount(provider: cat.provider, modelId: m.id, context: m.contextLength) }
+                            switch item.gate {
+                            case .available:
+                                if isDefaultAccount(provider: item.provider, modelId: item.slug) {
+                                    Text(String(localized: "默认")).font(.caption2).foregroundStyle(.secondary)
+                                }
+                                Button(String(localized: "设为默认")) {
+                                    modelManager.select(remote: item, onLogin: {}, onUpgrade: { _ in })
+                                }
                                 .buttonStyle(.borderless)
+                            case .loginRequired:
+                                GateBadge(text: String(localized: "登录"), tint: .gray)
+                                Button(String(localized: "登录")) {
+                                    Task {
+                                        do {
+                                            _ = try await authClient.browserOTT.signIn(with: .init(redirect_uri: authRedirectURI))
+                                        } catch {}
+                                        await authClient.session.refreshSession()
+                                        await modelManager.refreshRemote()
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                            case .upgradeRequired(let plan):
+                                GateBadge(text: String(localized: "升级"), tint: .pink)
+                                Button(String(localized: "升级")) {
+                                    pendingUpgradePlan = plan
+                                    showUpgrade = true
+                                }
+                                .buttonStyle(.bordered)
+                            }
                         }
                     }
                 }
             } header: {
-                Text(String(localized: "账户模型"))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(String(localized: "账户模型"))
+                    #if DEBUG
+                    Text("Base: \(BackendEnvironment.baseURL.absoluteString)")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    #endif
+                }
             }
         }
         .formStyle(.grouped)
+        .task {
+            // 将 BetterAuth 状态注入 manager（登录与计划）
+            updateMembershipFromAuth()
+            await modelManager.refreshRemote()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .init("BetterAuthSignedOut"))) { _ in
+            updateMembershipFromAuth()
+            Task { await modelManager.refreshRemote() }
+        }
         .sheet(isPresented: $presentEditor) {
             ProviderEditorView(provider: editing) { updated in
                 if let idx = store.providers.firstIndex(where: { $0.id == updated.id }) {
@@ -111,6 +171,7 @@ struct ProvidersSettingsView: View {
             }
             .frame(width: 460, height: 360)
         }
+        .sheet(isPresented: $showUpgrade) { MembershipUpgradeSheet(requiredPlan: pendingUpgradePlan) }
     }
 
     private func select(instance p: CustomModelInstance) {
@@ -137,6 +198,19 @@ struct ProvidersSettingsView: View {
 
     private func remove(_ p: CustomModelInstance) {
         store.providers.removeAll { $0.id == p.id }
+    }
+
+    private func updateMembershipFromAuth() {
+        let loggedIn = authClient.session.data?.user != nil
+        let planStr = authClient.session.data?.user.membership?.type ?? authClient.session.data?.user.membershipType
+        let plan: MembershipPlan? = {
+            guard let t = planStr?.lowercased() else { return nil }
+            if t == "pro+" || t == "proplus" { return .proPlus }
+            if t == "pro" { return .pro }
+            return .free
+        }()
+        struct Injected: MembershipProvider { let isLoggedIn: Bool; let currentPlan: MembershipPlan? }
+        modelManager.membership = Injected(isLoggedIn: loggedIn, currentPlan: plan)
     }
 }
 
