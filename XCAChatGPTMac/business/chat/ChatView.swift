@@ -9,6 +9,7 @@ import SwiftUI
 import BetterAuth
 //import AlertToast
 
+@available(*, deprecated, message: "Use ChatDetailView instead")
 struct ChatView: View {
     let conversation: GPTConversation
     let mode: ChatMode
@@ -146,6 +147,7 @@ struct ChatView: View {
         await self.vm.sendTapped()
     }
 }
+
 //
 //struct ChatView_Previews: PreviewProvider {
 //    static var previews: some View {

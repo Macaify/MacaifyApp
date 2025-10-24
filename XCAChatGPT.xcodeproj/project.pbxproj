@@ -171,6 +171,9 @@
         69FE10132EAF0A0A00AA0001 /* MembershipUpgradeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE10122EAF0A0A00AA0001 /* MembershipUpgradeSheet.swift */; };
 		69FE10212EAF1B0A00AA0001 /* HoverPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE10202EAF1B0A00AA0001 /* HoverPopover.swift */; };
 		69FE10332EAF1B0A00AA0001 /* SessionModelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE10322EAF1B0A00AA0001 /* SessionModelPicker.swift */; };
+		69FE11F12EAF330100AA0001 /* AnchoredPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE11F02EAF330100AA0001 /* AnchoredPopover.swift */; };
+        69FE11F32EAF33B800AA0001 /* ProviderListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE11F22EAF33B800AA0001 /* ProviderListView.swift */; };
+        69FE11F52EAF34C000AA0001 /* QuickModelPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE11F42EAF34C000AA0001 /* QuickModelPickerView.swift */; };
 		8B057596298E52DD00A56C9A /* ViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B91C013298ADC560079AF26 /* ViewModel.swift */; };
 		8B057597298E52DD00A56C9A /* MessageRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B91C015298ADC9D0079AF26 /* MessageRow.swift */; };
 		8B0575F1298FA9D800A56C9A /* XCAChatGPTWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 8B0575F0298FA9D800A56C9A /* XCAChatGPTWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -436,6 +439,9 @@
         69FE10002EAF000100AA0001 /* BackendEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = backend/BackendEnvironment.swift; sourceTree = "<group>"; };
         69FE10022EAF000100AA0001 /* BackendClientFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = backend/BackendClientFactory.swift; sourceTree = "<group>"; };
         69FE10042EAF000100AA0001 /* ModelPickerPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = components/ModelPickerPopover.swift; sourceTree = "<group>"; };
+        69FE11F02EAF330100AA0001 /* AnchoredPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = components/AnchoredPopover.swift; sourceTree = "<group>"; };
+        69FE11F22EAF33B800AA0001 /* ProviderListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = components/ProviderListView.swift; sourceTree = "<group>"; };
+        69FE11F42EAF34C000AA0001 /* QuickModelPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = components/QuickModelPickerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -887,11 +893,14 @@
 				69FE10102EAF0A0A00AA0001 /* ModelDetailCard.swift */,
 				69FE10122EAF0A0A00AA0001 /* MembershipUpgradeSheet.swift */,
                 69FE10202EAF1B0A00AA0001 /* HoverPopover.swift */,
-				69FE10322EAF1B0A00AA0001 /* SessionModelPicker.swift */,
-			);
-			path = Shared;
-			sourceTree = "<group>";
-		};
+                69FE10322EAF1B0A00AA0001 /* SessionModelPicker.swift */,
+                69FE11F02EAF330100AA0001 /* AnchoredPopover.swift */,
+                69FE11F22EAF33B800AA0001 /* ProviderListView.swift */,
+                69FE11F42EAF34C000AA0001 /* QuickModelPickerView.swift */,
+            );
+            path = Shared;
+            sourceTree = "<group>";
+        };
 		8B0575F4298FA9D800A56C9A /* XCAChatGPTWatch Watch App */ = {
 			isa = PBXGroup;
 			children = (
@@ -1227,12 +1236,15 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		8B05757E298E52C000A56C9A /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				69FE10332EAF1B0A00AA0001 /* SessionModelPicker.swift in Sources */,
-				69C1A0012D11222200AA0001 /* GPTSessionExtensions.swift in Sources */,
-				69C0F0022D11111100AA0001 /* NewMainView.swift in Sources */,
+            isa = PBXSourcesBuildPhase;
+            buildActionMask = 2147483647;
+            files = (
+                69FE11F12EAF330100AA0001 /* AnchoredPopover.swift in Sources */,
+                69FE11F32EAF33B800AA0001 /* ProviderListView.swift in Sources */,
+                69FE11F52EAF34C000AA0001 /* QuickModelPickerView.swift in Sources */,
+                69FE10332EAF1B0A00AA0001 /* SessionModelPicker.swift in Sources */,
+                69C1A0012D11222200AA0001 /* GPTSessionExtensions.swift in Sources */,
+                69C0F0022D11111100AA0001 /* NewMainView.swift in Sources */,
 				69B0AA142D0001B000AA0003 /* ChatTableView.swift in Sources */,
 				698C5AEA2A16ABA3007C046A /* KeyMonitorManager.swift in Sources */,
 				696B6B6F29E16FA100845C71 /* HotKeyManager.swift in Sources */,

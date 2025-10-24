@@ -835,6 +835,7 @@ struct ChatDetailView: View {
     // Quick actions palette state
     @State private var showQuickActions: Bool = false
     @State private var actionsMode: QuickActions.Mode = .root
+    // AnchoredPopover demo toggles (moved to InputBar)
     var body: some View {
         VStack(spacing: 0) {
             // Sessions bar
@@ -1276,6 +1277,11 @@ private struct InputBar: View {
     var openQuickActions: () -> Void
     var openBotSettings: () -> Void
     @State private var inputHeight: CGFloat = ChatTokens.controlHeight
+    // AnchoredPopover test state (scoped to input bar)
+    @State private var testAbove = false
+    @State private var testBelow = false
+    @State private var testLeading = false
+    @State private var testTrailing = false
 
     var body: some View {
         VStack(spacing: 6) {
@@ -1329,10 +1335,38 @@ private struct InputBar: View {
                     .foregroundStyle(.secondary)
                 Spacer()
             }.padding(.horizontal, 4)
+
+            // AnchoredPopover demo buttons (for quick testing)
+            HStack(spacing: 8) {
+                APTestButton(label: "上", isPresented: $testAbove, direction: .above)
+                APTestButton(label: "下", isPresented: $testBelow, direction: .below)
+                APTestButton(label: "左", isPresented: $testLeading, direction: .leading)
+                APTestButton(label: "右", isPresented: $testTrailing, direction: .trailing)
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
         }
     }
 
     
+}
+
+// MARK: - AnchoredPopover test button
+private struct APTestButton: View {
+    let label: String
+    @Binding var isPresented: Bool
+    let direction: AnchoredPopoverDirection
+    var body: some View {
+        Button(label) { isPresented.toggle() }
+            .buttonStyle(.bordered)
+            .font(.caption)
+            .background(
+                AnchoredPopover(isPresented: $isPresented, preferredDirection: direction) {
+                    QuickModelPickerView()
+                }
+            )
+    }
 }
 
 // Helper已移除：改为在 ChatDetailView 顶层承载面板，使遮罩覆盖全窗口

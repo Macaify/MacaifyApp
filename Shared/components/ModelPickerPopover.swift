@@ -84,10 +84,15 @@ struct ModelPickerPopover: View {
     private var combinedList: some View {
         // 1) 我的实例（样式与远端一致，仅保留 图标 + 名称 + 状态）
         ForEach(store.providers) { inst in
-            CustomInstanceRow(
+            ProviderInstanceRow(
                 inst: inst,
                 isSelected: isInstanceSelected(inst),
-                onTap: { select(instance: inst) }
+                onTap: { select(instance: inst) },
+                onHoverChange: { inside in
+                    #if os(macOS)
+                    if inside { ModelDetailPanelBridge.shared.close() }
+                    #endif
+                }
             )
         }
 
@@ -109,36 +114,21 @@ struct ModelPickerPopover: View {
     private func row(for item: RemoteModelItem) -> some View {
         let isHovered = (hoverCandidate == item || showHoverItem == item)
         #if os(macOS)
-        if showHoverDetail {
-            RowWithAnchor(
-                item: item,
-                isSelected: isAccountSelected(item.provider, item.slug),
-                isHovered: isHovered,
-                onHoverChange: { inside in handleHover(inside: inside, item: item) },
-                onTap: { select(remote: item) },
-                isPresented: Binding(
-                    get: { showHoverItem == item },
-                    set: { newVal in if !newVal && showHoverItem == item { showHoverItem = nil } }
-                ),
-                parentWindowProvider: parentWindowProvider
-            )
-        } else {
-            ModelRow(
-                item: item,
-                isSelected: isAccountSelected(item.provider, item.slug),
-                isHovered: isHovered,
-                onHoverChange: { inside in handleHover(inside: inside, item: item) },
-                onTap: { select(remote: item) }
-            )
-            .background(
-                HoverPopover(isPresented: Binding(
-                    get: { showHoverItem == item },
-                    set: { newVal in if !newVal && showHoverItem == item { showHoverItem = nil } }
-                ), preferredEdge: .maxX) {
-                    ModelDetailCard(item: item)
-                }
-            )
-        }
+        ModelRow(
+            item: item,
+            isSelected: isAccountSelected(item.provider, item.slug),
+            isHovered: isHovered,
+            onHoverChange: { inside in handleHover(inside: inside, item: item) },
+            onTap: { select(remote: item) }
+        )
+        .background(
+            AnchoredPopover(isPresented: Binding(
+                get: { showHoverItem == item },
+                set: { newVal in if !newVal && showHoverItem == item { showHoverItem = nil } }
+            ), preferredDirection: .trailing) {
+                ModelDetailCard(item: item)
+            }
+        )
         #else
         ModelRow(
             item: item,
@@ -390,46 +380,6 @@ private struct RowWithAnchor: View {
     }
 }
 #endif
-
-// 自定义实例行：与远端模型统一样式（图标 + 名称 + 状态），带 hover 高亮
-private struct CustomInstanceRow: View {
-    let inst: CustomModelInstance
-    let isSelected: Bool
-    var onTap: () -> Void
-    @State private var hovered = false
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 10) {
-                ProviderIconView(provider: inst.provider)
-                Text(inst.name)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Spacer()
-                if isSelected {
-                    Image(systemName: "checkmark").foregroundStyle(.secondary)
-                } else {
-                    let hasToken = (ProviderStore.shared.token(for: inst.id) ?? "").isEmpty == false
-                    if !hasToken {
-                        GateBadge(text: String(localized: "未配置"), tint: .orange)
-                    }
-                }
-            }
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(hovered ? Color.gray.opacity(0.08) : Color.clear)
-        .contentShape(Rectangle())
-        .onHover { inside in
-            hovered = inside
-            #if os(macOS)
-            if inside { ModelDetailPanelBridge.shared.close() }
-            #endif
-        }
-    }
-}
 
 // 启动器按钮：显示当前选择，点击打开 Popover
 struct ModelPickerButton: View {
