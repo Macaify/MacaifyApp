@@ -37,7 +37,7 @@ struct ModelDetailCard: View {
             VStack(alignment: .leading, spacing: 10) {
                 if let s = item.scoreSpeed { SpecRowLeft("Speed") { ScoreBars(score: s) } }
                 if let iq = item.scoreIntelligence { SpecRowLeft("Intelligence") { ScoreBars(score: iq) } }
-                SpecRowLeft("Provider") { Text(item.provider.capitalized) }
+                SpecRowLeft("模型接口") { Text(item.provider.capitalized) }
                 if let ctx = item.contextTokens {
                     SpecRowLeft("Context") { Text(tokenString(ctx)).fontWeight(.semibold) }
                     Text(wordAndPageHint(ctx))

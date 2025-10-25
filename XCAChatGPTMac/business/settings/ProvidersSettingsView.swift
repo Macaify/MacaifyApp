@@ -55,6 +55,8 @@ struct ProvidersSettingsView: View {
     @State private var hoveredCustomId: String? = nil
     @State private var hoveredRemoteId: String? = nil
     @State private var defaultPickerResetKey: Int = 0
+    @State private var templatePickerResetKey: Int = 0
+    @State private var showTemplatePicker: Bool = false
 
     // Observe global defaults for live label update
     @Default(.selectedModelId) private var selectedModelId
@@ -95,9 +97,6 @@ struct ProvidersSettingsView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(p.name)
-                            Text("\(p.provider) • \(p.modelId)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
                             if !p.baseURL.isEmpty {
                                 Text(p.baseURL).font(.caption2).foregroundStyle(.tertiary)
                             }
@@ -122,7 +121,10 @@ struct ProvidersSettingsView: View {
                         hoveredCustomId = inside ? p.id : (hoveredCustomId == p.id ? nil : hoveredCustomId)
                     }
                 }
-                    Button(String(localized: "添加模型实例")) { editing = nil; presentEditor = true }
+                    HStack(spacing: 12) {
+                        Button(String(localized: "从模型模板添加")) { templatePickerResetKey &+= 1; showTemplatePicker = true }
+                        Button(String(localized: "添加自定义模型")) { editing = nil; presentEditor = true }
+                    }
             } header: {
                 Text(String(localized: "我的模型实例"))
             } footer: {
@@ -155,6 +157,19 @@ struct ProvidersSettingsView: View {
                                         pendingUpgradePlan = plan
                                         showUpgrade = true
                                     })
+                                }
+                                .buttonStyle(.borderless)
+                                // Add as custom instance (template from remote)
+                                Button(String(localized: "添加为实例")) {
+                                    let template = CustomModelInstance(
+                                        name: item.name,
+                                        modelId: item.slug,
+                                        baseURL: "",
+                                        provider: "openai",
+                                        contextLength: item.contextTokens
+                                    )
+                                    editing = template
+                                    presentEditor = true
                                 }
                                 .buttonStyle(.borderless)
                             }
@@ -197,6 +212,10 @@ struct ProvidersSettingsView: View {
             updateMembershipFromAuth()
             Task { await modelManager.refreshRemote() }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .init("BetterAuthSessionChanged"))) { _ in
+            updateMembershipFromAuth()
+            Task { await modelManager.refreshRemote() }
+        }
         .sheet(isPresented: $presentEditor) {
             ProviderEditorView(provider: editing) { updated in
                 if let idx = store.providers.firstIndex(where: { $0.id == updated.id }) {
@@ -206,6 +225,21 @@ struct ProvidersSettingsView: View {
                 }
             }
             .frame(width: 460, height: 360)
+        }
+        .sheet(isPresented: $showTemplatePicker) {
+            RemoteModelTemplatePicker(resetKey: templatePickerResetKey) { item in
+                let template = CustomModelInstance(
+                    name: item.name,
+                    modelId: item.slug,
+                    baseURL: "",
+                    provider: "openai",
+                    contextLength: item.contextTokens
+                )
+                editing = template
+                presentEditor = true
+                showTemplatePicker = false
+            }
+            .frame(width: 460, height: 560)
         }
         .sheet(isPresented: $showUpgrade) { MembershipUpgradeSheet(requiredPlan: pendingUpgradePlan) }
     }
@@ -252,11 +286,12 @@ struct ProvidersSettingsView: View {
     // Label for default picker button
     private var defaultPickerLabel: String {
         if defaultSource == "provider", let inst = store.providers.first(where: { $0.id == selectedProviderInstanceId }) {
-            return inst.name.isEmpty ? "\(inst.provider) • \(inst.modelId)" : inst.name
+            return inst.name.isEmpty ? inst.modelId : inst.name
         }
         let provider = selectedProvider.isEmpty ? "openai" : selectedProvider
         let model = selectedModelId.isEmpty ? (LLMModelsManager.shared.modelCategories.first?.models.first?.id ?? "gpt-4o-mini") : selectedModelId
-        return provider == "openai" ? model : "\(provider) • \(model)"
+        let name = ModelSelectionManager.shared.modelsByProvider[provider]?.first(where: { $0.slug == model })?.name ?? model
+        return name
     }
 }
 
@@ -266,6 +301,7 @@ struct ProviderEditorView: View {
     @State private var token: String = ""
     var onSave: (CustomModelInstance) -> Void
     let isNew: Bool
+    @State private var showTemplateMenu: Bool = false
 
     init(provider: CustomModelInstance?, onSave: @escaping (CustomModelInstance) -> Void) {
         _provider = State(initialValue: provider ?? CustomModelInstance(name: "我的模型", modelId: "gpt-4o-mini", baseURL: "", provider: "openai"))
@@ -278,34 +314,8 @@ struct ProviderEditorView: View {
             Form {
                 Section(String(localized: "基本信息")) {
                     TextField(String(localized: "显示名"), text: $provider.name)
-                    LabeledContent(String(localized: "模型")) {
-                        Menu {
-                            ForEach(LLMModelsManager.shared.modelCategories, id: \.name) { cat in
-                                Section(cat.name) {
-                                    ForEach(cat.models) { m in
-                                        Button(m.name) {
-                                            provider.modelId = m.id
-                                            provider.provider = cat.provider
-                                            provider.contextLength = m.contextLength
-                                        }
-                                    }
-                                }
-                            }
-                            Divider()
-                            Button(String(localized: "手动输入")) {}
-                        } label: {
-                            HStack(spacing: 8) {
-                                Text(provider.modelId)
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 12, weight: .semibold))
-                            }
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(RoundedRectangle(cornerRadius: 6).stroke(Color.gray.opacity(0.2)))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    Picker(String(localized: "Provider"), selection: $provider.provider) {
+                    TextField(String(localized: "模型调用名"), text: $provider.modelId)
+                    Picker(String(localized: "模型接口格式"), selection: $provider.provider) {
                         Text("OpenAI").tag("openai")
                         Text("Anthropic").tag("anthropic")
                         Text("Compatible").tag("compatible")
@@ -316,14 +326,12 @@ struct ProviderEditorView: View {
                     SecureField(String(localized: "API Token"), text: $token)
                 }
                 Section(String(localized: "限制")) {
-                    Stepper(value: Binding(get: { provider.contextLength ?? 4096 }, set: { provider.contextLength = $0 }), in: 256...200000, step: 256) {
-                        HStack {
-                            Text(String(localized: "最大 Token"))
-                            Spacer()
-                            Text("\(provider.contextLength ?? 4096)")
-                                .foregroundStyle(.secondary)
-                        }
+                    LabeledContent(String(localized: "最大 Token")) {
+                        TextField("", value: Binding(get: { provider.contextLength ?? 4096 }, set: { provider.contextLength = $0 }), format: .number)
+                            .textFieldStyle(.plain)
+                            .frame(width: 120)
                     }
+                    .help(String(localized: "支持手动输入"))
                 }
             }
             .formStyle(.grouped)
@@ -343,5 +351,93 @@ struct ProviderEditorView: View {
             }
         }
         .onAppear { token = ProviderStore.shared.token(for: provider.id) ?? "" }
+    }
+}
+
+// 仅用于从账户模型中挑选一个模板（不会建立任何关联）
+private struct RemoteModelTemplatePicker: View {
+    @ObservedObject private var manager = ModelSelectionManager.shared
+    #if os(macOS)
+    @EnvironmentObject private var authClient: BetterAuthClient
+    #endif
+    var resetKey: Int = 0
+    var onPick: (RemoteModelItem) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text(String(localized: "选择模型模板"))
+                    .font(.headline)
+                Spacer()
+                #if os(macOS)
+                if manager.membership.isLoggedIn == false {
+                    Button(String(localized: "登录")) {
+                        Task {
+                            do { _ = try await authClient.browserOTT.signIn(with: .init(redirect_uri: "macaify://ott")) } catch {}
+                            await authClient.session.refreshSession()
+                            NotificationCenter.default.post(name: .init("BetterAuthSessionChanged"), object: nil)
+                            await manager.refreshRemote()
+                        }
+                    }
+                }
+                #endif
+            }
+            .padding(12)
+            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    let all = manager.providers.flatMap { manager.modelsByProvider[$0] ?? [] }
+                    let recommended = all.filter { $0.recommended == true }
+                    let others = all.filter { ($0.recommended ?? false) == false }
+                    if !recommended.isEmpty {
+                        Text(String(localized: "推荐"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 10)
+                            .padding(.top, 6)
+                            .padding(.bottom, 4)
+                        ForEach(recommended) { item in row(item) }
+                    }
+                    if !others.isEmpty {
+                        Text(String(localized: "全部模型"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 10)
+                            .padding(.top, 10)
+                            .padding(.bottom, 4)
+                        ForEach(others) { item in row(item) }
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+        }
+        .id(resetKey)
+        .task {
+            if manager.providers.isEmpty && !manager.isFetching {
+                await manager.refreshRemote()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func row(_ item: RemoteModelItem) -> some View {
+        Button {
+            onPick(item)
+        } label: {
+            HStack(spacing: 10) {
+                ProviderIconView(provider: item.provider)
+                Text(item.name)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Spacer()
+                if manager.membership.isLoggedIn == false {
+                    GateBadge(text: String(localized: "登录"), tint: .gray)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+        }
+        .buttonStyle(.plain)
+        .disabled(manager.membership.isLoggedIn == false)
     }
 }

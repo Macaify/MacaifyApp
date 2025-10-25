@@ -62,6 +62,12 @@ struct ModelPickerPopover: View {
                 await manager.refreshRemote()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .init("BetterAuthSessionChanged"))) { _ in
+            #if os(macOS)
+            updateMembershipFromAuth()
+            #endif
+            Task { await manager.refreshRemote() }
+        }
         .onDisappear { hoverShowTask?.cancel(); hoverHideTask?.cancel(); hoverCandidate = nil; showHoverItem = nil }
         #if os(macOS)
         // On macOS, present upgrade via a dedicated NSPanel to avoid the popover overlay issue.
@@ -82,7 +88,15 @@ struct ModelPickerPopover: View {
 
     @ViewBuilder
     private var combinedList: some View {
-        // 1) 我的实例（样式与远端一致，仅保留 图标 + 名称 + 状态）
+        // Section: 自定义
+        if !store.providers.isEmpty {
+            Text(String(localized: "自定义"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.top, 6)
+                .padding(.bottom, 4)
+        }
         ForEach(store.providers) { inst in
             ProviderInstanceRow(
                 inst: inst,
@@ -96,7 +110,7 @@ struct ModelPickerPopover: View {
             )
         }
 
-        // 2) 远端模型：扁平化展示（不再按 provider 分段/标题）
+        // 2) 远端模型：推荐 + 全部（扁平化展示）
         if manager.isFetching && manager.providers.isEmpty {
             HStack { Spacer(); ProgressView().controlSize(.small); Spacer() }
                 .padding(.vertical, 12)
@@ -105,9 +119,26 @@ struct ModelPickerPopover: View {
             Text(msg).foregroundStyle(.secondary).padding(.vertical, 8)
         }
         let allItems: [RemoteModelItem] = manager.providers.flatMap { manager.modelsByProvider[$0] ?? [] }
-        ForEach(allItems) { item in
-            row(for: item)
+        let recommendedItems: [RemoteModelItem] = allItems.filter { $0.recommended == true }
+        let otherItems: [RemoteModelItem] = allItems.filter { ($0.recommended ?? false) == false }
+        if !recommendedItems.isEmpty {
+            Text(String(localized: "推荐"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.top, 10)
+                .padding(.bottom, 4)
         }
+        ForEach(recommendedItems) { item in row(for: item) }
+        if !otherItems.isEmpty {
+            Text(String(localized: "全部模型"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.top, 10)
+                .padding(.bottom, 4)
+        }
+        ForEach(otherItems) { item in row(for: item) }
     }
 
     @ViewBuilder
@@ -401,9 +432,17 @@ struct ModelPickerButton: View {
     var currentText: String {
         let src = Defaults[.defaultSource]
         if src == "provider" {
-            return "\(Defaults[.selectedProvider]) • \(Defaults[.selectedModelId])"
+            if let inst = ProviderStore.shared.providers.first(where: { $0.id == Defaults[.selectedProviderInstanceId] }) {
+                return inst.name.isEmpty ? "\(inst.provider) • \(inst.modelId)" : inst.name
+            }
+            let provider = Defaults[.selectedProvider]
+            let model = Defaults[.selectedModelId]
+            return provider.isEmpty ? model : "\(provider) • \(model)"
         }
-        return "\(Defaults[.selectedProvider]) • \(Defaults[.selectedModelId])"
+        let provider = Defaults[.selectedProvider].isEmpty ? "openai" : Defaults[.selectedProvider]
+        let model = Defaults[.selectedModelId]
+        let name = ModelSelectionManager.shared.modelsByProvider[provider]?.first(where: { $0.slug == model })?.name ?? model
+        return provider == "openai" ? name : "\(provider) • \(name)"
     }
 
     var body: some View {

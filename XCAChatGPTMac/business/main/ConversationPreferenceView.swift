@@ -236,9 +236,16 @@ struct ConversationPreferenceView: View {
         if conversation.modelSource == "instance" {
             return ProviderStore.shared.providers.first(where: { $0.id == conversation.modelInstanceId })?.name ?? "模型"
         } else if !conversation.modelId.isEmpty {
-            return conversation.modelId
+            // Resolve friendly name from remote catalog across providers
+            let allItems = ModelSelectionManager.shared.modelsByProvider.values.flatMap { $0 }
+            return allItems.first(where: { $0.slug == conversation.modelId })?.name ?? conversation.modelId
         } else {
-            return Defaults[.selectedModelId]
+            // Global default as fallback
+            let provider = Defaults[.selectedProvider].isEmpty ? "openai" : Defaults[.selectedProvider]
+            let model = Defaults[.selectedModelId]
+            if model.isEmpty { return "模型" }
+            let name = ModelSelectionManager.shared.modelsByProvider[provider]?.first(where: { $0.slug == model })?.name ?? model
+            return name
         }
     }
 
@@ -263,7 +270,7 @@ struct ConversationPreferenceView: View {
                 if let h = (selectedModel ?? hoverModel) {
                     Text(h.title).font(.headline)
                     Divider()
-                    LabeledContent("Provider") { Text(h.provider) }
+                    LabeledContent("模型接口") { Text(h.provider) }
                     LabeledContent("上下文") { Text("\(h.context) tokens") }
                 } else {
                     Text("悬停以查看详情").foregroundStyle(.secondary)

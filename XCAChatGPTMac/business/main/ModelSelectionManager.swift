@@ -38,6 +38,7 @@ struct RemoteModelItem: Identifiable, Equatable, Hashable, Codable {
     let name: String
     let provider: String
     let description: String?
+    let recommended: Bool?
     let contextTokens: Int?
     let gate: Gate
     // Lightweight capability/price for悬浮详情
@@ -159,6 +160,7 @@ extension ModelSelectionManager {
                     name: model.name,
                     provider: provider,
                     description: model.description,
+                    recommended: model.recommended,
                     contextTokens: model.context?.tokens,
                     gate: gate,
                     supportsImage: model.modalities?.input?.contains("image") == true,
@@ -186,12 +188,8 @@ extension ModelSelectionManager {
     }
 
     private func gateForRemoteModel(plans: [MacaifyServiceKit.Plan]?) -> RemoteModelItem.Gate {
-        // 未登录：若标注包含 Free，则视为可用；否则需要登录
-        if !membership.isLoggedIn {
-            if plans == nil { return .available }
-            if let p = plans, p.contains(.free) { return .available }
-            return .loginRequired
-        }
+        // 未登录：所有远端模型均需要登录
+        if !membership.isLoggedIn { return .loginRequired }
         guard let requiredPlans = plans, !requiredPlans.isEmpty else { return .available }
         // Find minimal required plan
         let required: MembershipPlan? = requiredPlans

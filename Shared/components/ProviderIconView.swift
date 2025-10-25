@@ -10,7 +10,18 @@ struct ProviderIconView: View {
 
     var body: some View {
         Group {
-            if let img = SVGIconCache.shared.image(for: provider) {
+            // Special-case: use app icon for 'macaify'
+            if provider.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) == "macaify" {
+                if let appIcon = NSApplication.shared.applicationIconImage.copy() as? NSImage {
+                    Image(nsImage: appIcon)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                } else {
+                    Image(systemName: "app.fill")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                }
+            } else if let img = SVGIconCache.shared.image(for: provider) {
                 Image(nsImage: img)
                     .resizable()
                     .aspectRatio(contentMode: .fit)

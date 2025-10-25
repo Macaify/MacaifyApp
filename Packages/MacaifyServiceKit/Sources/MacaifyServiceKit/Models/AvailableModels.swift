@@ -38,6 +38,7 @@ public struct ModelInfo: Codable, Equatable {
     public let description: String?
     public let provider: String
     public let slug: String
+    public let recommended: Bool?
     public let context: ContextInfo?
     public let modalities: Modalities?
     public let features: Features?
@@ -80,4 +81,3 @@ public struct Scores: Codable, Equatable {
     public let speed: Int?
     public let intelligence: Int?
 }
-

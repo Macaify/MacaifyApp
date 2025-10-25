@@ -14,6 +14,7 @@ import BetterAuthBrowserOTT
 import CoreData
 import Defaults
 import AppKit
+import Combine
 import GPTEncoder
 import MarkdownView
 
@@ -89,6 +90,7 @@ final class ChatSessionViewModel: ObservableObject {
     @Published var configHint: String? = nil
     private struct APISendConfig { let provider: String; let model: String; let baseURL: String; let keyMasked: String; let withContext: Bool; let systemPromptLen: Int; let convId: UUID; let isAccount: Bool }
     private var lastConfig: APISendConfig? = nil
+    private var cancellables: Set<AnyCancellable> = []
 
     init(conversation: GPTConversation) {
         self.conv = conversation
@@ -96,7 +98,19 @@ final class ChatSessionViewModel: ObservableObject {
         self.api = resolved.api
         self.lastConfig = resolved.cfg
         self.configHint = resolved.hint
-        self.modelLabel = Self.label(for: resolved.cfg)
+        self.modelLabel = self.modelLabelText(for: resolved.cfg)
+        // React to model catalog updates to keep provider/name fresh for account models
+        ModelSelectionManager.shared.$modelsByProvider
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                let resolved = Self.resolveAPI(for: self.conv)
+                self.api = resolved.api
+                self.lastConfig = resolved.cfg
+                self.configHint = resolved.hint
+                self.modelLabel = self.modelLabelText(for: resolved.cfg)
+            }
+            .store(in: &cancellables)
         Task { await loadHistory() }
     }
 
@@ -107,7 +121,7 @@ final class ChatSessionViewModel: ObservableObject {
         self.api = resolved.api
         self.lastConfig = resolved.cfg
         self.configHint = resolved.hint
-        self.modelLabel = Self.label(for: resolved.cfg)
+        self.modelLabel = self.modelLabelText(for: resolved.cfg)
         // Only reload messages when switching to a different bot
         if convChanged {
             Task { await loadHistory() }
@@ -169,7 +183,12 @@ final class ChatSessionViewModel: ObservableObject {
             // account/default
             let selectedModel = conv.modelId.isEmpty ? Defaults[.selectedModelId] : conv.modelId
             model = selectedModel.isEmpty ? (LLMModelsManager.shared.modelCategories.first?.models.first?.id ?? "gpt-4o-mini") : selectedModel
-            provider = Defaults[.selectedProvider].isEmpty ? "openai" : Defaults[.selectedProvider]
+            // Derive provider from catalog by slug; fall back to Defaults
+            if let prov = ModelSelectionManager.shared.modelsByProvider.first(where: { (_, arr) in arr.contains(where: { $0.slug == model }) })?.key {
+                provider = prov
+            } else {
+                provider = Defaults[.selectedProvider].isEmpty ? "openai" : Defaults[.selectedProvider]
+            }
             // 账户模型：使用账户网关 + Bearer，不再读取本地 API Key
             isAccount = true
             baseURL = ""
@@ -184,12 +203,16 @@ final class ChatSessionViewModel: ObservableObject {
         return (api, cfg, hintText)
     }
 
-    private static func label(for cfg: APISendConfig) -> String {
-        if cfg.baseURL.trimmingCharacters(in: .whitespaces).isEmpty && cfg.provider == "openai" {
-            return cfg.model
-        } else {
-            return "\(cfg.provider):\(cfg.model)"
+    private func modelLabelText(for cfg: APISendConfig) -> String {
+        // For custom instances, prefer the instance's display name
+        if conv.modelSource == "instance", let inst = ProviderStore.shared.providers.first(where: { $0.id == conv.modelInstanceId }) {
+            return inst.name.isEmpty ? inst.modelId : inst.name
         }
+        // For account/default models, resolve friendly name via service catalog (name only)
+        let provider = cfg.provider
+        let slug = cfg.model
+        let name = ModelSelectionManager.shared.modelsByProvider[provider]?.first(where: { $0.slug == slug })?.name ?? slug
+        return name
     }
 
     @MainActor
@@ -366,7 +389,7 @@ final class ChatSessionViewModel: ObservableObject {
                     setError(message, primaryTitle: "升级", secondaryTitle: "切换默认模型", primary: { [weak self] in self?.openPricing() }, secondary: { [weak self] in self?.switchToAccountDefault() })
                 case .unauthorized, .notLoggedIn:
                     setError(message, primaryTitle: "去登录", secondaryTitle: nil, primary: {
-                        if #available(macOS 13.0, *) { NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) }
+                        NotificationCenter.default.post(name: .init("BetterAuthLoginRequestedFromChat"), object: nil)
                     })
                 default:
                     setError(message)
@@ -545,7 +568,7 @@ final class ChatSessionViewModel: ObservableObject {
                     setError(message, primaryTitle: "升级", secondaryTitle: "切换默认模型", primary: { [weak self] in self?.openPricing() }, secondary: { [weak self] in self?.switchToAccountDefault() })
                 case .unauthorized, .notLoggedIn:
                     setError(message, primaryTitle: "去登录", secondaryTitle: nil, primary: {
-                        if #available(macOS 13.0, *) { NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) }
+                        NotificationCenter.default.post(name: .init("BetterAuthLoginRequestedFromChat"), object: nil)
                     })
                 default:
                     setError(message)
@@ -840,6 +863,9 @@ struct Sidebar: View {
 }
 
 struct ChatDetailView: View {
+    #if os(macOS)
+    @EnvironmentObject private var authClient: BetterAuthClient
+    #endif
     @ObservedObject var viewModel: ChatSessionViewModel
     let bot: GPTConversation
     var openBotSettings: () -> Void = {}
@@ -1211,6 +1237,21 @@ struct ChatDetailView: View {
             if showQuickActions {
                 QuickActions(isPresented: $showQuickActions, mode: actionsMode, viewModel: viewModel, bot: bot, store: store)
             }
+        }
+        // 登录状态变化后，自动隐藏错误并刷新模型目录
+        .onReceive(NotificationCenter.default.publisher(for: .init("BetterAuthSessionChanged"))) { _ in
+            viewModel.error = nil
+            Task { await ModelSelectionManager.shared.refreshRemote() }
+        }
+        // Handle login requested from ViewModel error action
+        .onReceive(NotificationCenter.default.publisher(for: .init("BetterAuthLoginRequestedFromChat"))) { _ in
+            #if os(macOS)
+            Task {
+                do { _ = try await authClient.browserOTT.signIn(with: .init(redirect_uri: "macaify://ott")) } catch {}
+                await authClient.session.refreshSession()
+                NotificationCenter.default.post(name: .init("BetterAuthSessionChanged"), object: nil)
+            }
+            #endif
         }
     }
 

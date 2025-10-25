@@ -45,7 +45,15 @@ struct QuickModelPickerView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         // 顶部锚点：用于重置时滚动到顶部
                         Color.clear.frame(height: 0).id("top")
-                    // Custom instances
+                    // Section: 自定义
+                    if !store.providers.isEmpty {
+                        Text(String(localized: "自定义"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 10)
+                            .padding(.top, 6)
+                            .padding(.bottom, 4)
+                    }
                     ForEach(store.providers) { inst in
                         ProviderInstanceRow(
                             inst: inst,
@@ -74,7 +82,39 @@ struct QuickModelPickerView: View {
                         Text(msg).foregroundStyle(.secondary).padding(.vertical, 8)
                     }
                     let allItems: [RemoteModelItem] = manager.providers.flatMap { manager.modelsByProvider[$0] ?? [] }
-                    ForEach(allItems) { item in
+                    let recommendedItems: [RemoteModelItem] = allItems.filter { $0.recommended == true }
+                    let otherItems: [RemoteModelItem] = allItems.filter { ($0.recommended ?? false) == false }
+                    // Section: 推荐
+                    if !recommendedItems.isEmpty {
+                        Text(String(localized: "推荐"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 10)
+                            .padding(.top, 10)
+                            .padding(.bottom, 4)
+                        ForEach(recommendedItems) { item in
+                            QuickRemoteRow(
+                                item: item,
+                                isSelected: isAccountSelected(item.provider, item.slug),
+                                isHovering: hoverItemId == item.id,
+                                onHover: { inside in hoverItemId = inside ? item.id : (hoverItemId == item.id ? nil : hoverItemId) },
+                                onTap: {
+                                    hoverItemId = nil
+                                    Task { @MainActor in select(remote: item) }
+                                }
+                            )
+                        }
+                    }
+                    // Section: 全部模型
+                    if !otherItems.isEmpty {
+                        Text(String(localized: "全部模型"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 10)
+                            .padding(.top, 10)
+                            .padding(.bottom, 4)
+                    }
+                    ForEach(otherItems) { item in
                         QuickRemoteRow(
                             item: item,
                             isSelected: isAccountSelected(item.provider, item.slug),
@@ -108,6 +148,12 @@ struct QuickModelPickerView: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .task { await onAppearFetch() }
             .onReceive(NotificationCenter.default.publisher(for: .init("BetterAuthSignedOut"))) { _ in
+                #if os(macOS)
+                updateMembershipFromAuth()
+                Task { await manager.refreshRemote() }
+                #endif
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .init("BetterAuthSessionChanged"))) { _ in
                 #if os(macOS)
                 updateMembershipFromAuth()
                 Task { await manager.refreshRemote() }

@@ -23,16 +23,24 @@ public struct SessionModelPickerButton: View {
     }
 
     private var labelText: String {
+        // Instance: prefer custom instance display name
         if bot.modelSource == "instance", let inst = ProviderStore.shared.providers.first(where: { $0.id == bot.modelInstanceId }) {
-            return inst.baseURL.trimmingCharacters(in: .whitespaces).isEmpty && inst.provider == "openai" ? inst.modelId : "\(inst.provider):\(inst.modelId)"
+            return inst.name.isEmpty ? inst.modelId : inst.name
         }
+        // Account (per-bot) model: resolve friendly name from remote catalog
         if bot.modelSource == "account", !bot.modelId.isEmpty {
-            let provider = Defaults[.selectedProvider].isEmpty ? "openai" : Defaults[.selectedProvider]
-            return provider == "openai" ? bot.modelId : "\(provider):\(bot.modelId)"
+            // Derive provider from catalog by slug; fall back to Defaults for formatting only
+            let prov = ModelSelectionManager.shared.modelsByProvider.first(where: { (_, arr) in arr.contains(where: { $0.slug == bot.modelId }) })?.key
+            let provider = prov ?? (Defaults[.selectedProvider].isEmpty ? "openai" : Defaults[.selectedProvider])
+            let all = ModelSelectionManager.shared.modelsByProvider
+            let name = all[provider]?.first(where: { $0.slug == bot.modelId })?.name ?? bot.modelId
+            return provider == "openai" ? name : "\(provider):\(name)"
         }
+        // Fallback to global default selection
         let model = Defaults[.selectedModelId].isEmpty ? (LLMModelsManager.shared.modelCategories.first?.models.first?.id ?? "gpt-4o-mini") : Defaults[.selectedModelId]
         let provider = Defaults[.selectedProvider].isEmpty ? "openai" : Defaults[.selectedProvider]
-        return provider == "openai" ? model : "\(provider):\(model)"
+        let name = ModelSelectionManager.shared.modelsByProvider[provider]?.first(where: { $0.slug == model })?.name ?? model
+        return provider == "openai" ? name : "\(provider):\(name)"
     }
 
     public var body: some View {
