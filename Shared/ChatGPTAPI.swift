@@ -29,7 +29,8 @@ class ChatGPTAPI: @unchecked Sendable {
     var withContext: Bool
     
     private var PORTKEY_BASE_URL = "https://aigateway.macaify.com"
-    private let ACCOUNT_GATEWAY_BASE_URL = "http://localhost:3000/api/ai"
+    // 对于账户网关与 OpenAI 官方，默认包含 "/v1"，以便路径统一改为 "/chat/completions"
+    private let ACCOUNT_GATEWAY_BASE_URL = "http://localhost:3000/api/ai/v1"
 
     private var baseURL: String
     private var useAccountGateway: Bool
@@ -39,7 +40,8 @@ class ChatGPTAPI: @unchecked Sendable {
         if useAccountGateway {
             return ACCOUNT_GATEWAY_BASE_URL
         } else if provider == "openai" {
-            return baseURL.isEmpty ? "https://api.openai.com" : baseURL
+            // 官方默认附带 /v1；自定义 Base URL 不再强制拼接 /v1（由用户自行填写）
+            return baseURL.isEmpty ? "https://api.openai.com/v1" : baseURL
         } else {
             return PORTKEY_BASE_URL
         }
@@ -250,7 +252,7 @@ class ChatGPTAPI: @unchecked Sendable {
     
     func chatsStream(text: String) async throws -> AsyncThrowingStream<ChatStreamResult, Error> {
         // Build request
-        let url = URL(string: "\(realBaseURL)/v1/chat/completions")!
+        let url = URL(string: "\(realBaseURL)/chat/completions")!
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         let headers = try await buildHeaders()
@@ -345,7 +347,7 @@ class ChatGPTAPI: @unchecked Sendable {
 
     func sendMessageStream(text: String) async throws -> AsyncThrowingStream<String, Error> {
         print("send message stream", model, text)
-        let url = URL(string: "\(realBaseURL)/v1/chat/completions")!
+        let url = URL(string: "\(realBaseURL)/chat/completions")!
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         let headers = try await buildHeaders()
@@ -444,7 +446,7 @@ class ChatGPTAPI: @unchecked Sendable {
     }
 
     func sendMessage(_ text: String) async throws -> String {
-        let url = URL(string: "\(realBaseURL)/v1/chat/completions")!
+        let url = URL(string: "\(realBaseURL)/chat/completions")!
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         let headers = try await buildHeaders()

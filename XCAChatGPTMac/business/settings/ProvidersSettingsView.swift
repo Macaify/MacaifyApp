@@ -24,7 +24,18 @@ final class ProviderStore: ObservableObject {
     init() {
         if let data = UserDefaults.standard.data(forKey: key),
            let list = try? JSONDecoder().decode([CustomModelInstance].self, from: data) {
-            providers = list
+            // 数据迁移：将旧的 provider 值（compatible/anthropic）统一为 openai
+            var migrated = list
+            var changed = false
+            for i in 0..<migrated.count {
+                let p = migrated[i]
+                if p.provider.lowercased() == "compatible" || p.provider.lowercased() == "anthropic" {
+                    migrated[i].provider = "openai"
+                    changed = true
+                }
+            }
+            providers = migrated
+            if changed { persist() }
         }
     }
     private func persist() {
@@ -44,7 +55,6 @@ final class ProviderStore: ObservableObject {
 
 struct ProvidersSettingsView: View {
     @StateObject private var store = ProviderStore.shared
-    @State private var presentEditor = false
     @State private var editing: CustomModelInstance? = nil
     @EnvironmentObject private var authClient: BetterAuthClient
     @StateObject private var modelManager = ModelSelectionManager.shared
@@ -112,7 +122,7 @@ struct ProvidersSettingsView: View {
                                 .disabled(!hasToken)
                                 .help(hasToken ? "" : String(localized: "请先配置 Token"))
                         }
-                        Button(String(localized: "编辑")) { editing = p; presentEditor = true }
+                        Button(String(localized: "编辑")) { editing = p }
                             .buttonStyle(.borderless)
                         Button(String(localized: "删除")) { remove(p) }
                             .buttonStyle(.borderless)
@@ -123,7 +133,9 @@ struct ProvidersSettingsView: View {
                 }
                     HStack(spacing: 12) {
                         Button(String(localized: "从模型模板添加")) { templatePickerResetKey &+= 1; showTemplatePicker = true }
-                        Button(String(localized: "添加自定义模型")) { editing = nil; presentEditor = true }
+                        Button(String(localized: "添加自定义模型")) {
+                            editing = CustomModelInstance(name: String(localized: "我的模型"), modelId: "", baseURL: "", provider: "openai")
+                        }
                     }
             } header: {
                 Text(String(localized: "我的模型实例"))
@@ -169,7 +181,6 @@ struct ProvidersSettingsView: View {
                                         contextLength: item.contextTokens
                                     )
                                     editing = template
-                                    presentEditor = true
                                 }
                                 .buttonStyle(.borderless)
                             }
@@ -216,15 +227,16 @@ struct ProvidersSettingsView: View {
             updateMembershipFromAuth()
             Task { await modelManager.refreshRemote() }
         }
-        .sheet(isPresented: $presentEditor) {
-            ProviderEditorView(provider: editing) { updated in
+        .sheet(item: $editing) { item in
+            ProviderEditorView(provider: item) { updated in
                 if let idx = store.providers.firstIndex(where: { $0.id == updated.id }) {
                     store.providers[idx] = updated
                 } else {
                     store.providers.append(updated)
                 }
+                editing = nil
             }
-            .frame(width: 460, height: 360)
+            .frame(width: 460, height: 420)
         }
         .sheet(isPresented: $showTemplatePicker) {
             RemoteModelTemplatePicker(resetKey: templatePickerResetKey) { item in
@@ -236,7 +248,6 @@ struct ProvidersSettingsView: View {
                     contextLength: item.contextTokens
                 )
                 editing = template
-                presentEditor = true
                 showTemplatePicker = false
             }
             .frame(width: 460, height: 560)
@@ -299,12 +310,17 @@ struct ProviderEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @State var provider: CustomModelInstance
     @State private var token: String = ""
+    @State private var testing = false
+    @State private var testResult: String? = nil
     var onSave: (CustomModelInstance) -> Void
     let isNew: Bool
     @State private var showTemplateMenu: Bool = false
 
     init(provider: CustomModelInstance?, onSave: @escaping (CustomModelInstance) -> Void) {
-        _provider = State(initialValue: provider ?? CustomModelInstance(name: "我的模型", modelId: "gpt-4o-mini", baseURL: "", provider: "openai"))
+        let seed = provider ?? CustomModelInstance(name: "我的模型", modelId: "", baseURL: "", provider: "openai")
+        var fixed = seed
+        if fixed.provider != "openai" { fixed.provider = "openai" }
+        _provider = State(initialValue: fixed)
         self.onSave = onSave
         self.isNew = (provider == nil)
     }
@@ -316,14 +332,24 @@ struct ProviderEditorView: View {
                     TextField(String(localized: "显示名"), text: $provider.name)
                     TextField(String(localized: "模型调用名"), text: $provider.modelId)
                     Picker(String(localized: "模型接口格式"), selection: $provider.provider) {
-                        Text("OpenAI").tag("openai")
-                        Text("Anthropic").tag("anthropic")
-                        Text("Compatible").tag("compatible")
+                        Text(String(localized: "OpenAI / 兼容")).tag("openai")
                     }
                 }
                 Section(String(localized: "连接")) {
-                    TextField(String(localized: "Base URL（可选）"), text: $provider.baseURL)
+                    TextField(String(localized: "Base URL（可选）"), text: $provider.baseURL, prompt: Text(String(localized: "https://your-host.com/v1")))
                     SecureField(String(localized: "API Token"), text: $token)
+                    HStack(spacing: 10) {
+                        Button(action: { Task { await testConnection() } }) {
+                            if testing { ProgressView().controlSize(.small) } else { Text(String(localized: "测试连接")) }
+                        }
+                        .disabled(testing || provider.modelId.trimmingCharacters(in: .whitespaces).isEmpty)
+                        if let res = testResult {
+                            Text(res)
+                                .font(.caption)
+                                .foregroundStyle(res.hasPrefix("✅") ? .green : .red)
+                        }
+                        Spacer()
+                    }
                 }
                 Section(String(localized: "限制")) {
                     LabeledContent(String(localized: "最大 Token")) {
@@ -351,6 +377,23 @@ struct ProviderEditorView: View {
             }
         }
         .onAppear { token = ProviderStore.shared.token(for: provider.id) ?? "" }
+    }
+
+    @MainActor
+    private func testConnection() async {
+        testing = true
+        testResult = nil
+        defer { testing = false }
+        do {
+            let maxTk = provider.contextLength ?? 4096
+            let api = ChatGPTAPI(apiKey: token, model: provider.modelId, provider: provider.provider, maxToken: maxTk, systemPrompt: "", temperature: 0.2, baseURL: provider.baseURL, withContext: false, useAccountGateway: false)
+            let reply = try await api.sendMessage("hi")
+            let sample = reply.trimmingCharacters(in: .whitespacesAndNewlines)
+            let brief = sample.count > 36 ? String(sample.prefix(36)) + "…" : sample
+            testResult = "✅ 连接成功"
+        } catch {
+            testResult = "❌ 失败：\(error.localizedDescription)"
+        }
     }
 }
 

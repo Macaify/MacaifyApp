@@ -176,7 +176,8 @@ final class ChatSessionViewModel: ObservableObject {
 
         if source == "instance", let inst = ProviderStore.shared.providers.first(where: { $0.id == conv.modelInstanceId }) {
             model = inst.modelId
-            provider = inst.provider
+            // 将 "compatible" 归一化为 openai（使用 OpenAI 兼容接口 + 自定义 Base URL）
+            provider = (inst.provider == "compatible" ? "openai" : inst.provider)
             baseURL = inst.baseURL
             key = ProviderStore.shared.token(for: inst.id) ?? ""
         } else {
