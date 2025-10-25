@@ -122,10 +122,16 @@ struct ModelPickerPopover: View {
             onTap: { select(remote: item) }
         )
         .background(
-            AnchoredPopover(isPresented: Binding(
-                get: { showHoverItem == item },
-                set: { newVal in if !newVal && showHoverItem == item { showHoverItem = nil } }
-            ), preferredDirection: .trailing) {
+            AnchoredPopover(
+                isPresented: Binding(
+                    get: { showHoverItem == item },
+                    set: { newVal in if !newVal && showHoverItem == item { showHoverItem = nil } }
+                ),
+                preferredDirection: .trailing,
+                dismissOnOutsideClick: false,  // 嵌套使用时不响应外部点击
+                level: .statusBar,               // 使用更高的层级
+                canBecomeKey: false              // 不成为 key window，避免让父层失去焦点
+            ) {
                 ModelDetailCard(item: item)
             }
         )
@@ -229,6 +235,7 @@ struct ModelPickerPopover: View {
             Task {
                 do { _ = try await authClient.browserOTT.signIn(with: .init(redirect_uri: authRedirectURI)) } catch {}
                 await authClient.session.refreshSession()
+                await MainActor.run { updateMembershipFromAuth() }
                 await manager.refreshRemote()
             }
             #else
@@ -238,7 +245,8 @@ struct ModelPickerPopover: View {
             pendingPlan = plan
             showUpgrade = true
             #if os(macOS)
-            let hostWindow = ModelPickerPanelBridge.shared.panelWindow()?.parent
+            // 以触发按钮所在的父窗口为宿主，而非 Popover/Panel 本身
+            let hostWindow = parentWindowProvider()?.parent ?? parentWindowProvider()
             ModelDetailPanelBridge.shared.close()
             ModelPickerPanelBridge.shared.close()
             UpgradePanelBridge.shared.present(requiredPlan: plan, parentWindow: hostWindow)

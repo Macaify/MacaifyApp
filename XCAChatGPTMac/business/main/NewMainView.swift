@@ -1278,10 +1278,8 @@ private struct InputBar: View {
     var openBotSettings: () -> Void
     @State private var inputHeight: CGFloat = ChatTokens.controlHeight
     // AnchoredPopover test state (scoped to input bar)
-    @State private var testAbove = false
-    @State private var testBelow = false
-    @State private var testLeading = false
-    @State private var testTrailing = false
+    // Removed test toggles for AnchoredPopover demo
+    @State private var showSessionPicker: Bool = false
 
     var body: some View {
         VStack(spacing: 6) {
@@ -1320,53 +1318,59 @@ private struct InputBar: View {
                 .keyboardShortcut(.init("k"), modifiers: .command)
             }
 
-            // Session-scoped model selector below the input, smaller type
+            // Session-scoped model selector (AnchoredPopover), default opens above
             HStack(alignment: .center) {
-                SessionModelPickerButton(bot: bot, onPicked: { updated in
-                    updated.save()
-                    viewModel.updateConversation(updated)
-                }, openBotSettings: {
-                    openBotSettings()
-                })
+                Button(action: { showSessionPicker.toggle() }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "bolt.horizontal.circle")
+                        Text(viewModel.modelLabel.isEmpty ? String(localized: "选择模型") : viewModel.modelLabel)
+                            .lineLimit(1)
+                        Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
                 .font(.caption)
+                .background(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.25)))
+                .background(
+                    AnchoredPopover(isPresented: $showSessionPicker, preferredDirection: .above) {
+                        QuickModelPickerView(onDismiss: {
+                            showSessionPicker = false
+                            // 将最新选择应用到当前会话
+                            applySelectedModelToConversation()
+                        })
+                    }
+                )
 
                 Text("发送 ↩ / ⌘↩ · 换行 ⇧↩ · 动作 ⌘K")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Spacer()
-            }.padding(.horizontal, 4)
-
-            // AnchoredPopover demo buttons (for quick testing)
-            HStack(spacing: 8) {
-                APTestButton(label: "上", isPresented: $testAbove, direction: .above)
-                APTestButton(label: "下", isPresented: $testBelow, direction: .below)
-                APTestButton(label: "左", isPresented: $testLeading, direction: .leading)
-                APTestButton(label: "右", isPresented: $testTrailing, direction: .trailing)
-                Spacer()
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 4)
+
+            // Removed AnchoredPopover test buttons
         }
     }
 
-    
-}
-
-// MARK: - AnchoredPopover test button
-private struct APTestButton: View {
-    let label: String
-    @Binding var isPresented: Bool
-    let direction: AnchoredPopoverDirection
-    var body: some View {
-        Button(label) { isPresented.toggle() }
-            .buttonStyle(.bordered)
-            .font(.caption)
-            .background(
-                AnchoredPopover(isPresented: $isPresented, preferredDirection: direction) {
-                    QuickModelPickerView()
-                }
-            )
+    private func applySelectedModelToConversation() {
+        var updated = bot
+        let source = Defaults[.defaultSource]
+        if source == "provider" {
+            updated.modelSource = "instance"
+            updated.modelInstanceId = Defaults[.selectedProviderInstanceId]
+            updated.modelId = ""
+        } else {
+            updated.modelSource = "account"
+            updated.modelId = Defaults[.selectedModelId]
+            updated.modelInstanceId = ""
+        }
+        updated.save()
+        viewModel.updateConversation(updated)
     }
+    
 }
 
 // Helper已移除：改为在 ChatDetailView 顶层承载面板，使遮罩覆盖全窗口

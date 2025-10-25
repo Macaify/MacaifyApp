@@ -42,8 +42,11 @@ public struct AnchoredPopover<Content: View>: NSViewRepresentable {
     var preferredDirection: AnchoredPopoverDirection
     var edgeInset: CGFloat
     var dismissOnOutsideClick: Bool
+    var dismissOnESC: Bool
     var cornerRadius: CGFloat
     var level: NSWindow.Level
+    var canBecomeKey: Bool
+    var onDismiss: (() -> Void)?
     @ViewBuilder var content: () -> Content
 
     public init(
@@ -51,16 +54,22 @@ public struct AnchoredPopover<Content: View>: NSViewRepresentable {
         preferredDirection: AnchoredPopoverDirection = .below,
         edgeInset: CGFloat = 8,
         dismissOnOutsideClick: Bool = true,
+        dismissOnESC: Bool = true,
         cornerRadius: CGFloat = 12,
         level: NSWindow.Level = .popUpMenu,
+        canBecomeKey: Bool = true,
+        onDismiss: (() -> Void)? = nil,
         @ViewBuilder content: @escaping () -> Content
     ) {
         _isPresented = isPresented
         self.preferredDirection = preferredDirection
         self.edgeInset = edgeInset
         self.dismissOnOutsideClick = dismissOnOutsideClick
+        self.dismissOnESC = dismissOnESC
         self.cornerRadius = cornerRadius
         self.level = level
+        self.canBecomeKey = canBecomeKey
+        self.onDismiss = onDismiss
         self.content = content
     }
 
@@ -70,8 +79,11 @@ public struct AnchoredPopover<Content: View>: NSViewRepresentable {
             preferredDirection: preferredDirection,
             edgeInset: edgeInset,
             dismissOnOutsideClick: dismissOnOutsideClick,
+            dismissOnESC: dismissOnESC,
             cornerRadius: cornerRadius,
             level: level,
+            canBecomeKey: canBecomeKey,
+            onDismiss: onDismiss,
             content: { AnyView(content()) }
         )
     }
@@ -88,8 +100,22 @@ public struct AnchoredPopover<Content: View>: NSViewRepresentable {
         context.coordinator.edgeInset = edgeInset
         context.coordinator.cornerRadius = cornerRadius
         context.coordinator.level = level
+        context.coordinator.canBecomeKey = canBecomeKey
         context.coordinator.dismissOnOutsideClick = dismissOnOutsideClick
-        context.coordinator.content = { AnyView(content()) }
+        context.coordinator.dismissOnESC = dismissOnESC
+        context.coordinator.onDismiss = onDismiss
+        context.coordinator.content = {
+            // 包装内容，添加 ESC 处理
+            let wrapped = AnyView(
+                self.content()
+                    .background(
+                        self.dismissOnESC ?
+                            AnyView(ESCHandlerView(onESC: { context.coordinator.dismiss() })) :
+                            AnyView(EmptyView())
+                    )
+            )
+            return wrapped
+        }
 
         if isPresented {
             context.coordinator.presentIfNeeded()
@@ -105,8 +131,11 @@ public struct AnchoredPopover<Content: View>: NSViewRepresentable {
         var preferredDirection: AnchoredPopoverDirection
         var edgeInset: CGFloat
         var dismissOnOutsideClick: Bool
+        var dismissOnESC: Bool
         var cornerRadius: CGFloat
         var level: NSWindow.Level
+        var canBecomeKey: Bool
+        var onDismiss: (() -> Void)?
         var content: () -> AnyView
 
         // Runtime
@@ -115,23 +144,28 @@ public struct AnchoredPopover<Content: View>: NSViewRepresentable {
         private var host: NSHostingController<AnyView>?
         private var localMouseMonitor: Any?
         private var globalMouseMonitor: Any?
-        private var localKeyMonitor: Any?
 
         init(
             isPresented: Binding<Bool>,
             preferredDirection: AnchoredPopoverDirection,
             edgeInset: CGFloat,
             dismissOnOutsideClick: Bool,
+            dismissOnESC: Bool,
             cornerRadius: CGFloat,
             level: NSWindow.Level,
+            canBecomeKey: Bool,
+            onDismiss: (() -> Void)?,
             content: @escaping () -> AnyView
         ) {
             self.isPresented = isPresented
             self.preferredDirection = preferredDirection
             self.edgeInset = edgeInset
             self.dismissOnOutsideClick = dismissOnOutsideClick
+            self.dismissOnESC = dismissOnESC
             self.cornerRadius = cornerRadius
             self.level = level
+            self.canBecomeKey = canBecomeKey
+            self.onDismiss = onDismiss
             self.content = content
         }
 
@@ -189,6 +223,7 @@ public struct AnchoredPopover<Content: View>: NSViewRepresentable {
             p.titlebarAppearsTransparent = true
             p.animationBehavior = .none
             p.delegate = self
+            p.allowsKeyFocus = canBecomeKey  // 控制是否能成为 key window
 
             let host = NSHostingController(rootView: AnyView(EmptyView()))
             host.view.wantsLayer = true
@@ -253,7 +288,8 @@ public struct AnchoredPopover<Content: View>: NSViewRepresentable {
 
         // MARK: Dismissal & monitors
         private func installMonitorsIfNeeded() {
-            guard localMouseMonitor == nil && globalMouseMonitor == nil && localKeyMonitor == nil else { return }
+            guard localMouseMonitor == nil && globalMouseMonitor == nil else { return }
+            
             if dismissOnOutsideClick {
                 localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] e in
                     guard let self, let panel = self.panel else { return e }
@@ -267,25 +303,17 @@ public struct AnchoredPopover<Content: View>: NSViewRepresentable {
                     if !panel.frame.contains(pt) { self.dismiss() }
                 }
             }
-            localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] e in
-                guard let self else { return e }
-                if e.keyCode == 53 { // ESC
-                    self.dismiss()
-                    return nil
-                }
-                return e
-            }
         }
 
         private func removeMonitors() {
             if let m = localMouseMonitor { NSEvent.removeMonitor(m); localMouseMonitor = nil }
             if let m = globalMouseMonitor { NSEvent.removeMonitor(m); globalMouseMonitor = nil }
-            if let m = localKeyMonitor { NSEvent.removeMonitor(m); localKeyMonitor = nil }
         }
 
-        private func dismiss() {
+        func dismiss() {
             isPresented.wrappedValue = false
             close()
+            onDismiss?()
         }
 
         // MARK: NSWindowDelegate
@@ -309,7 +337,43 @@ public struct AnchoredPopover<Content: View>: NSViewRepresentable {
 }
 
 final class AnchoredPopoverPanel: NSPanel {
-    override var canBecomeKey: Bool { true }
+    var allowsKeyFocus: Bool = true
+    override var canBecomeKey: Bool { allowsKeyFocus }
+}
+
+// ESC 处理 View - 不使用 event monitor，直接响应键盘事件
+private struct ESCHandlerView: NSViewRepresentable {
+    let onESC: () -> Void
+    
+    func makeNSView(context: Context) -> ESCResponderView {
+        let view = ESCResponderView()
+        view.onESC = onESC
+        return view
+    }
+    
+    func updateNSView(_ nsView: ESCResponderView, context: Context) {
+        nsView.onESC = onESC
+    }
+}
+
+private class ESCResponderView: NSView {
+    var onESC: (() -> Void)?
+    
+    override var acceptsFirstResponder: Bool { true }
+    
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 53 { // ESC
+            onESC?()
+        } else {
+            super.keyDown(with: event)
+        }
+    }
+    
+    // 确保视图能接收键盘事件
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        window?.makeFirstResponder(self)
+    }
 }
 
 #else

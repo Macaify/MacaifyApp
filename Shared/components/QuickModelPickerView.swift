@@ -15,58 +15,128 @@ struct QuickModelPickerView: View {
     #if os(macOS)
     @EnvironmentObject private var authClient: BetterAuthClient
     #endif
+    
+    /// 选择完成后的回调，用于关闭弹窗
+    var onDismiss: (() -> Void)? = nil
 
     @State private var hoverItemId: String? = nil
+    @State private var anchorView: NSView? = nil  // 用于固定二级弹窗位置
+    @State private var showUpgrade: Bool = false
+    @State private var pendingPlan: MembershipPlan = .pro
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                // Custom instances
-                ForEach(store.providers) { inst in
-                    ProviderInstanceRow(inst: inst, isSelected: isInstanceSelected(inst)) {
-                        select(instance: inst)
+        HStack(alignment: .top, spacing: 0) {
+            // 主内容
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Custom instances
+                    ForEach(store.providers) { inst in
+                        ProviderInstanceRow(
+                            inst: inst,
+                            isSelected: isInstanceSelected(inst),
+                            onTap: {
+                                // 立即清除 hover 状态，避免干扰弹窗关闭
+                                hoverItemId = nil
+                                // 使用 Task 异步执行，避免 "Modifying state during view update"
+                                Task { @MainActor in
+                                    select(instance: inst)
+                                }
+                            },
+                            onHoverChange: { inside in
+                                // hover custom 模型时关闭二级弹窗
+                                if inside { hoverItemId = nil }
+                            }
+                        )
+                    }
+
+                    // Remote models (flattened)
+                    if manager.isFetching && manager.providers.isEmpty {
+                        HStack { Spacer(); ProgressView().controlSize(.small); Spacer() }
+                            .padding(.vertical, 12)
+                    }
+                    if let msg = manager.errorMessage, manager.providers.isEmpty {
+                        Text(msg).foregroundStyle(.secondary).padding(.vertical, 8)
+                    }
+                    let allItems: [RemoteModelItem] = manager.providers.flatMap { manager.modelsByProvider[$0] ?? [] }
+                    ForEach(allItems) { item in
+                        QuickRemoteRow(
+                            item: item,
+                            isSelected: isAccountSelected(item.provider, item.slug),
+                            isHovering: hoverItemId == item.id,
+                            onHover: { inside in hoverItemId = inside ? item.id : (hoverItemId == item.id ? nil : hoverItemId) },
+                            onTap: {
+                                // 立即清除 hover 状态，避免干扰弹窗关闭
+                                hoverItemId = nil
+                                // 使用 Task 异步执行，避免 "Modifying state during view update"
+                                Task { @MainActor in
+                                    select(remote: item)
+                                }
+                            }
+                        )
                     }
                 }
-
-                // Remote models (flattened)
-                if manager.isFetching && manager.providers.isEmpty {
-                    HStack { Spacer(); ProgressView().controlSize(.small); Spacer() }
-                        .padding(.vertical, 12)
-                }
-                if let msg = manager.errorMessage, manager.providers.isEmpty {
-                    Text(msg).foregroundStyle(.secondary).padding(.vertical, 8)
-                }
-                let allItems: [RemoteModelItem] = manager.providers.flatMap { manager.modelsByProvider[$0] ?? [] }
-                ForEach(allItems) { item in
-                    QuickRemoteRow(
-                        item: item,
-                        isSelected: isAccountSelected(item.provider, item.slug),
-                        isHovering: hoverItemId == item.id,
-                        onHover: { inside in hoverItemId = inside ? item.id : (hoverItemId == item.id ? nil : hoverItemId) },
-                        onTap: { select(remote: item) }
-                    )
-                    .background(
-                        AnchoredPopover(
-                            isPresented: Binding(
-                                get: { hoverItemId == item.id },
-                                set: { newVal in if !newVal && hoverItemId == item.id { hoverItemId = nil } }
-                            ),
-                            preferredDirection: .trailing
-                        ) {
-                            ModelDetailCard(item: item)
-                        }
-                    )
-                }
+                .padding(8)
             }
-            .padding(8)
+            .frame(width: 350, height: 600)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.regularMaterial)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .task { await onAppearFetch() }
+            .onReceive(NotificationCenter.default.publisher(for: .init("BetterAuthSignedOut"))) { _ in
+                #if os(macOS)
+                updateMembershipFromAuth()
+                Task { await manager.refreshRemote() }
+                #endif
+            }
+            
+            // 固定位置的二级弹窗锚点（位于主弹窗右上角）
+            #if os(macOS)
+            Color.clear
+                .frame(width: 1, height: 600)  // 与主弹窗同高，确保顶部对齐
+                .background(
+                    VStack {
+                        Color.clear
+                            .frame(width: 1, height: 1)
+                            .background(AnchorResolver(onResolve: { view in anchorView = view }))
+                        Spacer()
+                    }
+                )
+                // 二级弹窗（hover 显示模型详情）暂时禁用，等待 ESC 关闭问题修复
+                // TODO: 重新启用 AnchoredPopover 以恢复二级弹窗
+                #if false
+                .background(
+                    Group {
+                        if anchorView != nil {
+                            AnchoredPopover(
+                                isPresented: Binding(
+                                    get: { hoverItemId != nil },
+                                    set: { newVal in if !newVal { hoverItemId = nil } }
+                                ),
+                                preferredDirection: .trailing,
+                                dismissOnOutsideClick: false,
+                                dismissOnESC: false,  // 不响应 ESC，让主弹窗处理
+                                level: .statusBar,
+                                canBecomeKey: false
+                            ) {
+                                if let itemId = hoverItemId,
+                                   let item = findItem(byId: itemId) {
+                                    ModelDetailCard(item: item)
+                                }
+                            }
+                        }
+                    }
+                )
+                #endif
+            #endif
         }
-        .frame(width: 350, height: 600)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(.regularMaterial)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .task { await onAppearFetch() }
+    }
+    
+    // 根据 ID 查找模型项
+    private func findItem(byId id: String) -> RemoteModelItem? {
+        let allItems: [RemoteModelItem] = manager.providers.flatMap { manager.modelsByProvider[$0] ?? [] }
+        return allItems.first(where: { $0.id == id })
     }
 
     private func isInstanceSelected(_ inst: CustomModelInstance) -> Bool {
@@ -82,29 +152,48 @@ struct QuickModelPickerView: View {
         Defaults[.proxyAddress] = p.baseURL
         Defaults[.selectedProviderInstanceId] = p.id
         Defaults[.defaultSource] = "provider"
+        onDismiss?()
     }
 
     private func select(remote item: RemoteModelItem) {
         switch item.gate {
         case .available:
             manager.select(remote: item, onLogin: {}, onUpgrade: { _ in })
+            onDismiss?()
         case .loginRequired:
             #if os(macOS)
             Task {
                 do { _ = try await authClient.browserOTT.signIn(with: .init(redirect_uri: "macaify://ott")) } catch {}
                 await authClient.session.refreshSession()
+                // 登录完成后，先更新会员注入，再刷新远端模型，确保权益状态即时更新
+                await MainActor.run { updateMembershipFromAuth() }
                 await manager.refreshRemote()
             }
             #endif
-        case .upgradeRequired:
-            // Minimal: just surface the badge; a full upgrade panel is out-of-scope for minimal picker
-            break
+        case .upgradeRequired(let plan):
+            #if os(macOS)
+            // 在面板/弹窗场景，使用全局 UpgradePanelBridge，并优先附着到“触发按钮所在的父窗口”（而非 Popover 本身）
+            // anchorView?.window 指向的是当前 Popover 的 NSPanel；其 parent 才是触发按钮所在的窗口
+            let hostWindow = anchorView?.window?.parent ?? anchorView?.window
+            UpgradePanelBridge.shared.present(requiredPlan: plan, parentWindow: hostWindow)
+            #else
+            pendingPlan = plan
+            showUpgrade = true
+            #endif
         }
     }
 
     private func onAppearFetch() async {
         #if os(macOS)
-        // Inject membership state from auth
+        updateMembershipFromAuth()
+        #endif
+        if manager.providers.isEmpty && !manager.isFetching {
+            await manager.refreshRemote()
+        }
+    }
+
+    #if os(macOS)
+    private func updateMembershipFromAuth() {
         let loggedIn = authClient.session.data?.user != nil
         let planStr = authClient.session.data?.user.membership?.type ?? authClient.session.data?.user.membershipType
         let plan: MembershipPlan? = {
@@ -115,12 +204,24 @@ struct QuickModelPickerView: View {
         }()
         struct Injected: MembershipProvider { let isLoggedIn: Bool; let currentPlan: MembershipPlan? }
         manager.membership = Injected(isLoggedIn: loggedIn, currentPlan: plan)
-        #endif
-        if manager.providers.isEmpty && !manager.isFetching {
-            await manager.refreshRemote()
-        }
     }
+    #endif
 }
+
+#if os(macOS)
+import AppKit
+
+// 用于获取 NSView 引用的辅助组件
+private struct AnchorResolver: NSViewRepresentable {
+    var onResolve: (NSView) -> Void
+    func makeNSView(context: Context) -> NSView {
+        let v = NSView()
+        DispatchQueue.main.async { onResolve(v) }
+        return v
+    }
+    func updateNSView(_ nsView: NSView, context: Context) { }
+}
+#endif
 
 // MARK: - Remote row (minimal style matching ModelPickerPopover)
 private struct QuickRemoteRow: View {
@@ -148,13 +249,14 @@ private struct QuickRemoteRow: View {
                     GateBadge(text: String(localized: "升级"), tint: .pink)
                 }
             }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
         .background(isHovering ? Color.gray.opacity(0.08) : Color.clear)
-        .contentShape(Rectangle())
+        .contentShape(.rect)
+        .containerShape(.rect)
         .onHover { inside in onHover(inside) }
     }
 }
-

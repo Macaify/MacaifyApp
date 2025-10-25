@@ -57,12 +57,14 @@ struct ProviderInstanceRow: View {
                     }
                 }
             }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
         .background(hovered ? Color.gray.opacity(0.08) : Color.clear)
         .contentShape(Rectangle())
+        .containerShape(.rect)
         .onHover { inside in
             hovered = inside
             onHoverChange?(inside)
