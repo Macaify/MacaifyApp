@@ -739,6 +739,21 @@ struct MainSplitView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .init("QuickChatSendSelectedText"))) { note in
+            guard let info = note.userInfo as? [String: Any] else { return }
+            let convIdStr = (info["convId"] as? String) ?? ""
+            let textRaw = (info["text"] as? String) ?? ""
+            if let uuid = UUID(uuidString: convIdStr), let bot = store.bots.first(where: { $0.id == uuid }) {
+                store.selectedID = uuid
+                chatVM.updateConversation(bot)
+                chatVM.startNewSession()
+                let text = textRaw.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !text.isEmpty {
+                    chatVM.input = text
+                    Task { await chatVM.send() }
+                }
+            }
+        }
         .toolbar { toolbar }
         .sheet(isPresented: $showSettings) {
             if let selected = store.selected {

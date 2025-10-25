@@ -146,18 +146,26 @@ class HotKeyManager {
         if KeyboardShortcuts.getShortcut(for: conversation.NameChat) != nil {
             KeyboardShortcuts.onKeyDown(for: conversation.NameChat) { [self] in
                 NSLog("chat-mode hotkey pressed for \(conversation.id)")
-                // 按原聊天逻辑：尽力抓取选中文本，作为上下文注入；始终打开窗口并新建会话
+                // 根据设置分两种模式：true=直接发送；false=作为上下文
+                let sendDirectly = conversation.autoAddSelectedText
                 StartupPasteboardManager.shared.startup { text in
                     let bundleId = StartupPasteboardManager.shared.currentSourceBundleId ?? ""
                     let appName = StartupPasteboardManager.shared.currentSourceAppName ?? ""
                     resume()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                        NotificationCenter.default.post(name: .init("QuickChatSelectedText"), object: nil, userInfo: [
-                            "convId": conversation.id.uuidString,
-                            "text": text ?? "",
-                            "sourceBundleId": bundleId,
-                            "sourceAppName": appName
-                        ])
+                        if sendDirectly {
+                            NotificationCenter.default.post(name: .init("QuickChatSendSelectedText"), object: nil, userInfo: [
+                                "convId": conversation.id.uuidString,
+                                "text": text ?? ""
+                            ])
+                        } else {
+                            NotificationCenter.default.post(name: .init("QuickChatSelectedText"), object: nil, userInfo: [
+                                "convId": conversation.id.uuidString,
+                                "text": text ?? "",
+                                "sourceBundleId": bundleId,
+                                "sourceAppName": appName
+                            ])
+                        }
                     }
                 }
             }

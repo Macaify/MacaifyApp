@@ -116,10 +116,19 @@
 "chat_mode_description" = "In Chat Mode, pressing the shortcut key will open the specified chat dialog.";
 "tip_mode_description" = "In Edit Mode, pressing the shortcut key will directly modify the text at the original location. This is often used for content translation and similar scenarios.";
 "auto_add_selected_text" = "Automatically Add Selected Text to Chats";
-"edit_mode_shortcut" = "In-place Edit Shortcut";
+"send_selected_text_directly" = "Send Selected Text Directly";
+"use_selected_text_as_context" = "Use Selected Text as Context";
+"edit_mode_shortcut" = "In-Context (Any App)";
 "chat_mode_shortcut" = "Open & Chat Shortcut";
-"edit_mode_help" = "Replaces the selected text in the current app without opening a window.";
-"chat_mode_help" = "Opens Macaify, inserts the selected text, and sends it.";
+"edit_mode_help" = "Replaces selected text in any app without opening a window.";
+// open & chat dynamic descriptions
+"open_chat_desc_context" = "Opens Macaify and uses the selection as context (added to system prompt).";
+"open_chat_desc_send" = "Opens Macaify and sends the selection as a message.";
+"use_selection_as" = "Use Selection As";
+"use_as_context" = "Context";
+"use_as_message" = "Message";
+"section_in_context" = "In-Context (Any App)";
+"section_open_chat" = "Open & Chat";
 "选择模型" = "Choose Model";
 "我的自定义" = "My Custom";
 "全部模型" = "All Models";

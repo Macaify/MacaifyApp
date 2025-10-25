@@ -16,7 +16,6 @@ struct ConversationPreferenceView: View {
     @EnvironmentObject var pathManager: PathManager
     @State var conversation: GPTConversation
     @State var autoAddSelectedText: Bool
-    @State var typingInPlace: Bool
     @State var oneTimeChat: Bool
     @State var prompt: String
     let mode: ConversationPreferenceMode
@@ -28,7 +27,6 @@ struct ConversationPreferenceView: View {
     init(conversation: GPTConversation, mode: ConversationPreferenceMode) {
         self.conversation = conversation
         self.autoAddSelectedText = conversation.autoAddSelectedText
-        self.typingInPlace = conversation.typingInPlace
         self.oneTimeChat = conversation.withContext
         self.mode = mode
         self.prompt = conversation.prompt
@@ -49,7 +47,7 @@ struct ConversationPreferenceView: View {
                 modelUnifiedSelection
                 useContext
                 hotkey
-                typingInPlaceItem
+                // typingInPlace choice removed; hotkey pair defines the mode
             }
             .formStyle(.grouped)
             .navigationTitle(isNew ? "新建机器人" : "编辑机器人")
@@ -133,9 +131,10 @@ struct ConversationPreferenceView: View {
     }
     
     var hotkey: some View {
-        Section("hotkey") {
-            VStack(alignment: .leading, spacing: 10) {
-                LabeledContent(String(localized: "edit_mode_shortcut")) {
+        Group {
+            // In-Context (Any App)
+            Section(String(localized: "section_in_context")) {
+                LabeledContent(String(localized: "hotkey")) {
                     KeyboardShortcuts.Recorder(for: conversation.NameEdit) { shortcut in
                         if shortcut != nil { HotKeyManager.register(conversation) }
                         else { KeyboardShortcuts.reset(conversation.NameEdit) }
@@ -143,15 +142,23 @@ struct ConversationPreferenceView: View {
                     .controlSize(.large)
                 }
                 Text(String(localized: "edit_mode_help")).font(.caption).foregroundStyle(.secondary)
-
-                LabeledContent(String(localized: "chat_mode_shortcut")) {
+            }
+            // Open & Chat
+            Section(String(localized: "section_open_chat")) {
+                LabeledContent(String(localized: "hotkey")) {
                     KeyboardShortcuts.Recorder(for: conversation.NameChat) { shortcut in
                         if shortcut != nil { HotKeyManager.register(conversation) }
                         else { KeyboardShortcuts.reset(conversation.NameChat) }
                     }
                     .controlSize(.large)
                 }
-                Text(String(localized: "chat_mode_help")).font(.caption).foregroundStyle(.secondary)
+                LabeledContent(String(localized: "use_selection_as")) { chatShortcutBehavior }
+                // Dynamic description per selected behavior (placed below the options)
+                if autoAddSelectedText {
+                    Text(String(localized: "open_chat_desc_send")).font(.caption).foregroundStyle(.secondary)
+                } else {
+                    Text(String(localized: "open_chat_desc_context")).font(.caption).foregroundStyle(.secondary)
+                }
             }
         }
     }
@@ -165,31 +172,20 @@ struct ConversationPreferenceView: View {
         }
     }
     
-    var autoAddText: some View {
-        Toggle(isOn: $autoAddSelectedText) {
-            Text("auto_add_selected_text")
-        }.onChange(of: autoAddSelectedText) { newValue in
+    // For Chat shortcut behavior: false = use as context, true = send directly
+    var chatShortcutBehavior: some View {
+        Picker("", selection: $autoAddSelectedText) {
+            Text("use_as_context").tag(false)
+            Text("use_as_message").tag(true)
+        }
+        .labelsHidden()
+        .pickerStyle(.segmented)
+        .onChange(of: autoAddSelectedText) { newValue in
             conversation.autoAddSelectedText = newValue
         }
     }
     
-    var typingInPlaceItem: some View {
-        Section("行为") {
-            HStack {
-                Spacer()
-                Picker("", selection: $typingInPlace) {
-                    Text("编辑模式").tag(true)
-                    Text("聊天模式").tag(false)
-                }
-                .labelsHidden()
-                .pickerStyle(.segmented)
-                .onChange(of: typingInPlace) { conversation.typingInPlace = $0 }
-            }
-            if !typingInPlace {
-                autoAddText
-            }
-        }
-    }
+    // Removed behavior section; modes are determined by two separate hotkeys
 
     // MARK: - Unified model chooser (account + custom)
     @State private var showModelPopover = false
