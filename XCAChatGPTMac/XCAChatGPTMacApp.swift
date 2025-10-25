@@ -62,6 +62,20 @@ struct XCAChatGPTMacApp: App {
                 .task {
                     // Load initial session on app start
                     await authClient.session.refreshSession()
+                    // Inject membership into model manager and refresh models once per app launch
+                    await MainActor.run {
+                        let loggedIn = authClient.session.data?.user != nil
+                        let planStr = authClient.session.data?.user.membership?.type ?? authClient.session.data?.user.membershipType
+                        let plan: MembershipPlan? = {
+                            guard let t = planStr?.lowercased() else { return nil }
+                            if t == "pro+" || t == "proplus" { return .proPlus }
+                            if t == "pro" { return .pro }
+                            return .free
+                        }()
+                        struct Injected: MembershipProvider { let isLoggedIn: Bool; let currentPlan: MembershipPlan? }
+                        ModelSelectionManager.shared.membership = Injected(isLoggedIn: loggedIn, currentPlan: plan)
+                    }
+                    await ModelSelectionManager.shared.refreshRemote()
                 }
                 .onAppear {
                     // Register a global opener that ensures exactly one main window.

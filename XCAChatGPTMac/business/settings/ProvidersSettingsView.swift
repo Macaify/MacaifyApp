@@ -54,6 +54,7 @@ struct ProvidersSettingsView: View {
     @State private var showDefaultPicker: Bool = false
     @State private var hoveredCustomId: String? = nil
     @State private var hoveredRemoteId: String? = nil
+    @State private var defaultPickerResetKey: Int = 0
 
     // Observe global defaults for live label update
     @Default(.selectedModelId) private var selectedModelId
@@ -82,10 +83,11 @@ struct ProvidersSettingsView: View {
                     .background(
                         AnchoredPopover(isPresented: $showDefaultPicker, preferredDirection: .above) {
                             // 使用 QuickModelPickerView，未注入回调时默认写入全局 Defaults
-                            QuickModelPickerView(onDismiss: { showDefaultPicker = false })
+                            QuickModelPickerView(onDismiss: { showDefaultPicker = false }, resetKey: defaultPickerResetKey)
                                 .frame(width: 350, height: 600)
                         }
                     )
+                    .onChange(of: showDefaultPicker) { open in if open { defaultPickerResetKey &+= 1 } }
                 }
             }
             Section {

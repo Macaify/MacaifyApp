@@ -9,7 +9,7 @@ import Foundation
 import Defaults
 
 /// 会员计划
-enum MembershipPlan: String, CaseIterable, Hashable {
+enum MembershipPlan: String, CaseIterable, Hashable, Codable {
     case free = "Free"
     case pro = "Pro"
     case proPlus = "Pro+"
@@ -29,8 +29,10 @@ struct DefaultMembershipProvider: MembershipProvider {
 }
 
 /// 远端模型条目（最小视图模型，用于 UI 展示与选择）。
-struct RemoteModelItem: Identifiable, Equatable, Hashable {
-    enum Gate: Hashable { case available, loginRequired, upgradeRequired(MembershipPlan) }
+struct RemoteModelItem: Identifiable, Equatable, Hashable, Codable {
+    enum Gate: Hashable {
+        case available, loginRequired, upgradeRequired(MembershipPlan)
+    }
     let id: String        // backend id e.g. "anthropic/claude-3.5-sonnet"
     let slug: String      // e.g. "claude-3.5-sonnet" or "gpt-4o-mini"
     let name: String
@@ -50,6 +52,37 @@ struct RemoteModelItem: Identifiable, Equatable, Hashable {
     let scoreIntelligence: Int?
 }
 
+// Codable conformance for RemoteModelItem.Gate
+extension RemoteModelItem.Gate: Codable {
+    private enum Kind: String, Codable { case available, loginRequired, upgradeRequired }
+    private enum CodingKeys: String, CodingKey { case type, plan }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try container.decode(Kind.self, forKey: .type)
+        switch type {
+        case .available: self = .available
+        case .loginRequired: self = .loginRequired
+        case .upgradeRequired:
+            let plan = try container.decode(MembershipPlan.self, forKey: .plan)
+            self = .upgradeRequired(plan)
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .available:
+            try container.encode(Kind.available, forKey: .type)
+        case .loginRequired:
+            try container.encode(Kind.loginRequired, forKey: .type)
+        case .upgradeRequired(let plan):
+            try container.encode(Kind.upgradeRequired, forKey: .type)
+            try container.encode(plan, forKey: .plan)
+        }
+    }
+}
+
 /// 管理“可用模型目录 + 选择状态”。
 final class ModelSelectionManager: ObservableObject {
     static let shared = ModelSelectionManager()
@@ -67,7 +100,23 @@ final class ModelSelectionManager: ObservableObject {
     // 会员状态来源（可注入）
     var membership: MembershipProvider = DefaultMembershipProvider()
 
-    private init() {}
+    // Cache location
+    private let cacheURL: URL = {
+        let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSTemporaryDirectory())
+        return dir.appendingPathComponent("model_directory_cache.json", isDirectory: false)
+    }()
+
+    private struct CacheContainer: Codable {
+        let providers: [String]
+        let modelsByProvider: [String: [RemoteModelItem]]
+        let timestamp: Date
+    }
+
+    private init() {
+        // Load cached directory on startup to populate UI immediately (offline support)
+        loadCache()
+    }
 
     func model(name: String) -> Model? {
         localModels.first(where: { $0.name == name }) ?? Model(name: name, contextLength: 4096)
@@ -129,6 +178,8 @@ extension ModelSelectionManager {
             self.modelsByProvider = grouped
             self.lastUpdatedAt = Date()
             self.errorMessage = nil
+            // Persist to cache for next launch/offline scenario
+            saveCache()
         } catch {
             self.errorMessage = error.localizedDescription
         }
@@ -151,6 +202,35 @@ extension ModelSelectionManager {
             .first
         if let cur = membership.currentPlan, let req = required, cur.rank >= req.rank { return .available }
         return .upgradeRequired(required ?? .pro)
+    }
+}
+
+// MARK: - Caching
+extension ModelSelectionManager {
+    private func saveCache() {
+        let snapshot = CacheContainer(providers: providers, modelsByProvider: modelsByProvider, timestamp: Date())
+        do {
+            let data = try JSONEncoder().encode(snapshot)
+            try data.write(to: cacheURL, options: [.atomic])
+        } catch {
+            #if DEBUG
+            print("[ModelSelectionManager] save cache error: \(error)")
+            #endif
+        }
+    }
+
+    private func loadCache() {
+        do {
+            let data = try Data(contentsOf: cacheURL)
+            let snapshot = try JSONDecoder().decode(CacheContainer.self, from: data)
+            // Populate observable properties synchronously before any UI renders
+            self.providers = snapshot.providers
+            self.modelsByProvider = snapshot.modelsByProvider
+            self.lastUpdatedAt = snapshot.timestamp
+            self.errorMessage = nil
+        } catch {
+            // No cache yet or failed to decode — ignore silently
+        }
     }
 }
 

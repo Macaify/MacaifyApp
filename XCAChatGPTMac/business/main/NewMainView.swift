@@ -1280,6 +1280,7 @@ private struct InputBar: View {
     // AnchoredPopover test state (scoped to input bar)
     // Removed test toggles for AnchoredPopover demo
     @State private var showSessionPicker: Bool = false
+    @State private var sessionPickerResetKey: Int = 0
 
     var body: some View {
         VStack(spacing: 6) {
@@ -1338,6 +1339,7 @@ private struct InputBar: View {
                     AnchoredPopover(isPresented: $showSessionPicker, preferredDirection: .above) {
                         QuickModelPickerView(
                             onDismiss: { showSessionPicker = false },
+                            resetKey: sessionPickerResetKey,
                             isInstanceSelected: { inst in bot.modelSource == "instance" && bot.modelInstanceId == inst.id },
                             isAccountSelected: { _, modelId in bot.modelSource == "account" && bot.modelId == modelId },
                             onPickInstance: { inst in
@@ -1359,13 +1361,15 @@ private struct InputBar: View {
                         )
                     }
                 )
+                .onChange(of: showSessionPicker) { open in
+                    if open { sessionPickerResetKey &+= 1 }
+                }
 
                 Text("发送 ↩ / ⌘↩ · 换行 ⇧↩ · 动作 ⌘K")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Spacer()
             }
-            .padding(.horizontal, 4)
 
             // Removed AnchoredPopover test buttons
         }

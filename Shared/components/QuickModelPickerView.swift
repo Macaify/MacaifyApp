@@ -19,6 +19,8 @@ struct QuickModelPickerView: View {
     
     /// 选择完成后的回调，用于关闭弹窗
     var onDismiss: (() -> Void)? = nil
+    /// 外部触发的重置键：当值变化时，清空本地状态并将列表滚动到顶部
+    var resetKey: Int = 0
     /// 注入：判断是否为“当前已选中”（用于高亮）。未注入时走全局 Defaults。
     var isInstanceSelected: (CustomModelInstance) -> Bool = { p in
         Defaults[.defaultSource] == "provider" && Defaults[.selectedProviderInstanceId] == p.id
@@ -38,8 +40,11 @@ struct QuickModelPickerView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             // 主内容
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        // 顶部锚点：用于重置时滚动到顶部
+                        Color.clear.frame(height: 0).id("top")
                     // Custom instances
                     ForEach(store.providers) { inst in
                         ProviderInstanceRow(
@@ -85,8 +90,15 @@ struct QuickModelPickerView: View {
                             }
                         )
                     }
+                    }
+                    .padding(8)
                 }
-                .padding(8)
+                // 使用 .id(resetKey) 强制重建 ScrollView，避免出现“回到顶部”的滚动过程
+                .id(resetKey)
+                .onChange(of: resetKey) { _ in
+                    // 重置 hover 状态；滚动位置通过重建视图直接在顶部，无需滚动动画
+                    hoverItemId = nil
+                }
             }
             .frame(width: 350, height: 600)
             .background(
