@@ -90,11 +90,11 @@ class HotKeyManager {
             if conversation.typingInPlace {
                 TypingInPlace.shared.typeInPlace(conv: conversation)
             } else if isActive {
-                PathManager.shared.toChat(conversation, msg: MainViewModel.shared.searchText)
+                PathManager.shared.toChat(conversation, msg: "")
                 // Notify SwiftUI main split view to focus this bot and inject context
                 NotificationCenter.default.post(name: .init("QuickChatSelectedText"), object: nil, userInfo: [
                     "convId": conversation.id.uuidString,
-                    "text": MainViewModel.shared.searchText ?? ""
+                    "text": ""
                 ])
             } else if (conversation.autoAddSelectedText) {
                 StartupPasteboardManager.shared.startup { text in

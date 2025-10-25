@@ -61,3 +61,18 @@ class PathManager: ObservableObject {
         toMain(command: command)
     }
 }
+
+// Lightweight route types kept for compatibility with KeyEvents and callers.
+enum ChatMode {
+    case normal
+    case trial
+}
+
+enum Target: Hashable {
+    case main(command: GPTConversation? = nil)
+    case setting
+    case addCommand
+    case playground
+    case editCommand(command: GPTConversation)
+    case chat(command: GPTConversation, msg: String? = nil, mode: ChatMode = .normal)
+}
