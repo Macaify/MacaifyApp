@@ -6,7 +6,11 @@
 //
 
 import SwiftUI
-// Markdown rendering is disabled to improve scrolling performance
+#if canImport(MarkdownUI)
+import MarkdownUI
+#endif
+// Markdown rendering was disabled previously for performance. We now enable
+// it with a lightweight renderer and fall back to plain text while streaming.
 
 // Cross‑platform design tokens for Chat UI
 enum ChatTokens {
@@ -94,19 +98,8 @@ struct MessageRowView: View {
         }
         
         VStack(alignment: .leading, spacing: 8) {
-            // Markdown disabled for performance: render all as plain text
-            Text(text)
-                .font(.body)
-                .foregroundStyle(.primary)
-                .textSelection(.enabled)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(bubbleBackground(isResponse: isResponse))
-                .clipShape(RoundedRectangle(cornerRadius: ChatTokens.bubbleRadius))
-                .overlay(
-                    RoundedRectangle(cornerRadius: ChatTokens.bubbleRadius)
-                        .stroke(ChatTokens.strokeColor, lineWidth: 0.8)
-                )
+            // Render Markdown when not streaming; otherwise show plain text
+            messageBubble(text: text, isResponse: isResponse, isStreaming: showDotLoading)
             
             if let error = responseError {
                 Text("Error: \(error)")
@@ -211,6 +204,54 @@ struct MessageRowView: View {
         }
         .padding()
         .padding(.bottom, 24)
+    }
+}
+
+// MARK: - Markdown/Plain bubble renderer
+extension MessageRowView {
+    @ViewBuilder
+    private func messageBubble(text: String, isResponse: Bool, isStreaming: Bool) -> some View {
+        #if canImport(MarkdownUI)
+        if !isStreaming {
+            Markdown(text)
+                .textSelection(.enabled)
+                .tint(.accentColor)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(bubbleBackground(isResponse: isResponse))
+                .clipShape(RoundedRectangle(cornerRadius: ChatTokens.bubbleRadius))
+                .overlay(
+                    RoundedRectangle(cornerRadius: ChatTokens.bubbleRadius)
+                        .stroke(ChatTokens.strokeColor, lineWidth: 0.8)
+                )
+        } else {
+            Text(text)
+                .font(.body)
+                .foregroundStyle(.primary)
+                .textSelection(.enabled)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(bubbleBackground(isResponse: isResponse))
+                .clipShape(RoundedRectangle(cornerRadius: ChatTokens.bubbleRadius))
+                .overlay(
+                    RoundedRectangle(cornerRadius: ChatTokens.bubbleRadius)
+                        .stroke(ChatTokens.strokeColor, lineWidth: 0.8)
+                )
+        }
+        #else
+        Text(text)
+            .font(.body)
+            .foregroundStyle(.primary)
+            .textSelection(.enabled)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(bubbleBackground(isResponse: isResponse))
+            .clipShape(RoundedRectangle(cornerRadius: ChatTokens.bubbleRadius))
+            .overlay(
+                RoundedRectangle(cornerRadius: ChatTokens.bubbleRadius)
+                    .stroke(ChatTokens.strokeColor, lineWidth: 0.8)
+            )
+        #endif
     }
 }
 

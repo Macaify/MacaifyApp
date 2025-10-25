@@ -6,12 +6,16 @@
 //
 
 import SwiftUI
+#if canImport(MarkdownUI)
+import MarkdownUI
+#endif
 import BetterAuth
 import BetterAuthBrowserOTT
 import CoreData
 import Defaults
 import AppKit
 import GPTEncoder
+import MarkdownView
 
 // MARK: - Store for sidebar bots
 final class BotStore: ObservableObject {
@@ -1083,64 +1087,7 @@ struct ChatDetailView: View {
             }
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 12) {
-                        ForEach(viewModel.messages) { msg in
-                            HStack(alignment: .top) {
-                                if msg.sender == .assistant { Spacer(minLength: 0) }
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack(spacing: 6) {
-                                        Text(msg.sender == .user ? "You" : "Assistant").font(.caption).foregroundStyle(.secondary)
-                                        if let via = msg.viaAgent { Text("via \(via)").font(.caption2).foregroundStyle(.secondary) }
-                                    }
-                                    Text(msg.text).textSelection(.enabled)
-                                }
-                                .padding(10)
-                                .background(msg.sender == .user ? Color.blue.opacity(0.08) : Color.gray.opacity(0.08))
-                                .cornerRadius(10)
-                                if msg.sender == .user { Spacer(minLength: 0) }
-                            }
-                            .id(msg.id)
-                            .contextMenu {
-                                Button { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(msg.text, forType: .string) } label: { Label("复制", systemImage: "doc.on.doc") }
-                                Button {
-                                    let md = "```\n\(msg.text)\n```"
-                                    NSPasteboard.general.clearContents(); NSPasteboard.general.setString(md, forType: .string)
-                                } label: { Label("复制为 Markdown", systemImage: "doc.on.doc.fill") }
-                                Button { viewModel.injectContext(msg.text) } label: { Label("用作上下文", systemImage: "text.append") }
-                                if msg.sender == .user {
-                                    Divider()
-                                    Button("设为 System Prompt 并重新生成", systemImage: "slider.horizontal.3") {
-                                        Task { await viewModel.regenerateWithSystemPromptOverride(msg.text) }
-                                    }
-                                }
-                                if let store {
-                                    Divider()
-                                    Menu("用其他 Agent 运行…", content: {
-                                        ForEach(store.bots, id: \.id) { other in
-                                            if other.id != bot.id {
-                                                Button(other.name.isEmpty ? other.id.uuidString : other.name) {
-                                                    Task { await viewModel.runWithAgent(agent: other, using: msg.sender == .user ? msg.text : nil) }
-                                                }
-                                            }
-                                        }
-                                    })
-                                    Menu("用其他 Agent 新开会话…", content: {
-                                        ForEach(store.bots, id: \.id) { other in
-                                            if other.id != bot.id {
-                                                Button(other.name.isEmpty ? other.id.uuidString : other.name) {
-                                                    store.selectedID = other.id
-                                                    if let chosen = store.selected {
-                                                        viewModel.input = msg.sender == .user ? msg.text : (viewModel.input.isEmpty ? (viewModel.messages.last(where: { $0.sender == .user })?.text ?? "") : viewModel.input)
-                                                        viewModel.updateConversation(chosen)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    })
-                                }
-                            }
-                        }
-                    }.padding(12)
+                    messagesList
                 }
                 .onChange(of: viewModel.messages.count) { _ in
                     if let last = viewModel.messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
@@ -1281,6 +1228,96 @@ struct ChatDetailView: View {
             Image(systemName: "app.fill")
                 .font(.system(size: 12, weight: .semibold))
         }
+}
+
+// MARK: - Message rendering (Markdown when available)
+    @ViewBuilder
+    private func messageBody(for msg: ChatSessionViewModel.ChatMessage) -> some View {
+        #if canImport(MarkdownUI)
+        // Avoid heavy Markdown layout while streaming; switch to Markdown after complete
+        // if msg.isStreaming {
+        //     Text(msg.text)
+        //         .textSelection(.enabled)
+        //         .font(.body)
+        // } else {
+            MarkdownView(msg.text)
+                .textSelection(.enabled)
+                .tint(.accentColor)
+        // }
+        #else
+        Text(msg.text)
+            .textSelection(.enabled)
+            .font(.body)
+        #endif
+    }
+
+    // MARK: - Messages list with SelectionArea when available
+    @ViewBuilder
+    private var messagesList: some View {
+        listCore
+    }
+
+    @ViewBuilder
+    private var listCore: some View {
+        LazyVStack(alignment: .leading, spacing: 12) {
+            ForEach(viewModel.messages) { msg in
+                HStack(alignment: .top) {
+                    if msg.sender == .assistant { Spacer(minLength: 0) }
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 6) {
+                            Text(msg.sender == .user ? "You" : "Assistant").font(.caption).foregroundStyle(.secondary)
+                            if let via = msg.viaAgent { Text("via \(via)").font(.caption2).foregroundStyle(.secondary) }
+                        }
+                        messageBody(for: msg)
+                    }
+                    .padding(10)
+                    .background(msg.sender == .user ? Color.blue.opacity(0.08) : Color.gray.opacity(0.08))
+                    .cornerRadius(10)
+                    if msg.sender == .user { Spacer(minLength: 0) }
+                }
+                .id(msg.id)
+                .contextMenu {
+                    Button { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(msg.text, forType: .string) } label: { Label("复制", systemImage: "doc.on.doc") }
+                    Button {
+                        let md = "```\n\(msg.text)\n```"
+                        NSPasteboard.general.clearContents(); NSPasteboard.general.setString(md, forType: .string)
+                    } label: { Label("复制为 Markdown", systemImage: "doc.on.doc.fill") }
+                    Button { viewModel.injectContext(msg.text) } label: { Label("用作上下文", systemImage: "text.append") }
+                    if msg.sender == .user {
+                        Divider()
+                        Button("设为 System Prompt 并重新生成", systemImage: "slider.horizontal.3") {
+                            Task { await viewModel.regenerateWithSystemPromptOverride(msg.text) }
+                        }
+                    }
+                    if let store {
+                        Divider()
+                        Menu("用其他 Agent 运行…", content: {
+                            ForEach(store.bots, id: \.id) { other in
+                                if other.id != bot.id {
+                                    Button(other.name.isEmpty ? other.id.uuidString : other.name) {
+                                        Task { await viewModel.runWithAgent(agent: other, using: msg.sender == .user ? msg.text : nil) }
+                                    }
+                                }
+                            }
+                        })
+                        Menu("用其他 Agent 新开会话…", content: {
+                            ForEach(store.bots, id: \.id) { other in
+                                if other.id != bot.id {
+                                    Button(other.name.isEmpty ? other.id.uuidString : other.name) {
+                                        store.selectedID = other.id
+                                        if let chosen = store.selected {
+                                            viewModel.input = msg.sender == .user ? msg.text : (viewModel.input.isEmpty ? (viewModel.messages.last(where: { $0.sender == .user })?.text ?? "") : viewModel.input)
+                                            viewModel.updateConversation(chosen)
+                                        }
+                                    }
+                                }
+                            }
+                        })
+                    }
+                }
+            }
+        }
+        .padding(12)
     }
 }
 
