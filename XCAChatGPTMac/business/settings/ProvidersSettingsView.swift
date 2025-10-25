@@ -51,6 +51,15 @@ struct ProvidersSettingsView: View {
     @State private var showUpgrade: Bool = false
     @State private var pendingUpgradePlan: MembershipPlan = .pro
     private let authRedirectURI: String = "macaify://ott"
+    @State private var showDefaultPicker: Bool = false
+    @State private var hoveredCustomId: String? = nil
+    @State private var hoveredRemoteId: String? = nil
+
+    // Observe global defaults for live label update
+    @Default(.selectedModelId) private var selectedModelId
+    @Default(.selectedProvider) private var selectedProvider
+    @Default(.selectedProviderInstanceId) private var selectedProviderInstanceId
+    @Default(.defaultSource) private var defaultSource
 
     var body: some View {
         Form {
@@ -58,7 +67,25 @@ struct ProvidersSettingsView: View {
                 HStack {
                     Text(String(localized: "默认模型"))
                     Spacer()
-                    ModelPickerButton(label: String(localized: "选择模型"))
+                    Button {
+                        showDefaultPicker.toggle()
+                    } label: {
+                        HStack(spacing: 8) {
+                            Text(defaultPickerLabel)
+                            Image(systemName: "chevron.down").font(.system(size: 12, weight: .semibold))
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(RoundedRectangle(cornerRadius: 6).stroke(Color.gray.opacity(0.2)))
+                    }
+                    .buttonStyle(.plain)
+                    .background(
+                        AnchoredPopover(isPresented: $showDefaultPicker, preferredDirection: .above) {
+                            // 使用 QuickModelPickerView，未注入回调时默认写入全局 Defaults
+                            QuickModelPickerView(onDismiss: { showDefaultPicker = false })
+                                .frame(width: 350, height: 600)
+                        }
+                    )
                 }
             }
             Section {
@@ -78,17 +105,22 @@ struct ProvidersSettingsView: View {
                             Text(String(localized: "默认")).font(.caption2).foregroundStyle(.secondary)
                         }
                         let hasToken = (ProviderStore.shared.token(for: p.id) ?? "").isEmpty == false
-                        Button(String(localized: "设为默认")) { setDefault(instance: p) }
-                            .buttonStyle(.borderless)
-                            .disabled(!hasToken)
-                            .help(hasToken ? "" : String(localized: "请先配置 Token"))
+                        if hoveredCustomId == p.id {
+                            Button(String(localized: "设为默认")) { setDefault(instance: p) }
+                                .buttonStyle(.borderless)
+                                .disabled(!hasToken)
+                                .help(hasToken ? "" : String(localized: "请先配置 Token"))
+                        }
                         Button(String(localized: "编辑")) { editing = p; presentEditor = true }
                             .buttonStyle(.borderless)
                         Button(String(localized: "删除")) { remove(p) }
                             .buttonStyle(.borderless)
                     }
+                    .onHover { inside in
+                        hoveredCustomId = inside ? p.id : (hoveredCustomId == p.id ? nil : hoveredCustomId)
+                    }
                 }
-                Button(String(localized: "添加模型实例")) { editing = nil; presentEditor = true }
+                    Button(String(localized: "添加模型实例")) { editing = nil; presentEditor = true }
             } header: {
                 Text(String(localized: "我的模型实例"))
             } footer: {
@@ -108,35 +140,37 @@ struct ProvidersSettingsView: View {
                         HStack {
                             Text(item.name)
                             Spacer()
-                            switch item.gate {
-                            case .available:
-                                if isDefaultAccount(provider: item.provider, modelId: item.slug) {
-                                    Text(String(localized: "默认")).font(.caption2).foregroundStyle(.secondary)
-                                }
+                            // Hover-only default button (placed LEFT to badges to avoid shifting existing content)
+                            if hoveredRemoteId == item.id {
                                 Button(String(localized: "设为默认")) {
-                                    modelManager.select(remote: item, onLogin: {}, onUpgrade: { _ in })
+                                    modelManager.select(remote: item, onLogin: {
+                                        Task {
+                                            do { _ = try await authClient.browserOTT.signIn(with: .init(redirect_uri: authRedirectURI)) } catch {}
+                                            await authClient.session.refreshSession()
+                                            await modelManager.refreshRemote()
+                                        }
+                                    }, onUpgrade: { plan in
+                                        pendingUpgradePlan = plan
+                                        showUpgrade = true
+                                    })
                                 }
                                 .buttonStyle(.borderless)
+                            }
+                            // Selected marker
+                            if isDefaultAccount(provider: item.provider, modelId: item.slug) {
+                                Text(String(localized: "默认")).font(.caption2).foregroundStyle(.secondary)
+                            }
+                            // Gate badge (no extra action button)
+                            switch item.gate {
                             case .loginRequired:
                                 GateBadge(text: String(localized: "登录"), tint: .gray)
-                                Button(String(localized: "登录")) {
-                                    Task {
-                                        do {
-                                            _ = try await authClient.browserOTT.signIn(with: .init(redirect_uri: authRedirectURI))
-                                        } catch {}
-                                        await authClient.session.refreshSession()
-                                        await modelManager.refreshRemote()
-                                    }
-                                }
-                                .buttonStyle(.bordered)
-                            case .upgradeRequired(let plan):
+                            case .upgradeRequired:
                                 GateBadge(text: String(localized: "升级"), tint: .pink)
-                                Button(String(localized: "升级")) {
-                                    pendingUpgradePlan = plan
-                                    showUpgrade = true
-                                }
-                                .buttonStyle(.bordered)
+                            default: EmptyView()
                             }
+                        }
+                        .onHover { inside in
+                            hoveredRemoteId = inside ? item.id : (hoveredRemoteId == item.id ? nil : hoveredRemoteId)
                         }
                     }
                 }
@@ -211,6 +245,16 @@ struct ProvidersSettingsView: View {
         }()
         struct Injected: MembershipProvider { let isLoggedIn: Bool; let currentPlan: MembershipPlan? }
         modelManager.membership = Injected(isLoggedIn: loggedIn, currentPlan: plan)
+    }
+
+    // Label for default picker button
+    private var defaultPickerLabel: String {
+        if defaultSource == "provider", let inst = store.providers.first(where: { $0.id == selectedProviderInstanceId }) {
+            return inst.name.isEmpty ? "\(inst.provider) • \(inst.modelId)" : inst.name
+        }
+        let provider = selectedProvider.isEmpty ? "openai" : selectedProvider
+        let model = selectedModelId.isEmpty ? (LLMModelsManager.shared.modelCategories.first?.models.first?.id ?? "gpt-4o-mini") : selectedModelId
+        return provider == "openai" ? model : "\(provider) • \(model)"
     }
 }
 

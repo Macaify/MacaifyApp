@@ -208,14 +208,30 @@ struct ConversationPreferenceView: View {
                         Text(currentModelTitle)
                         Image(systemName: "chevron.down").font(.system(size: 12, weight: .semibold))
                     }
-                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
                     .background(RoundedRectangle(cornerRadius: 6).stroke(Color.gray.opacity(0.2)))
                 }
                 .buttonStyle(.plain)
-                .popover(isPresented: $showModelPopover, arrowEdge: .bottom) {
-                    modelPickerPopover
-                        .frame(width: 560, height: 380)
-                }
+                .background(
+                    AnchoredPopover(isPresented: $showModelPopover, preferredDirection: .above) {
+                        QuickModelPickerView(
+                            onDismiss: { showModelPopover = false },
+                            isInstanceSelected: { inst in conversation.modelSource == "instance" && conversation.modelInstanceId == inst.id },
+                            isAccountSelected: { _, modelId in conversation.modelSource == "account" && conversation.modelId == modelId },
+                            onPickInstance: { inst in
+                                conversation.modelSource = "instance"
+                                conversation.modelInstanceId = inst.id
+                                conversation.modelId = ""
+                            },
+                            onPickRemote: { item in
+                                conversation.modelSource = "account"
+                                conversation.modelId = item.slug
+                                conversation.modelInstanceId = ""
+                            }
+                        )
+                    }
+                )
             }
         }
     }

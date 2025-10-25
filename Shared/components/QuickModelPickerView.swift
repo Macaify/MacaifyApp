@@ -7,6 +7,7 @@ import BetterAuthBrowserOTT
 #endif
 
 /// Minimal unified model picker content showing both custom instances and remote models.
+/// - Supports multi-context selection via injected handlers; defaults to global selection.
 /// - Uses gating badges: 登录 / 升级
 /// - Hover on remote items shows AnchoredPopover with ModelDetailCard (prefer right side)
 struct QuickModelPickerView: View {
@@ -18,6 +19,16 @@ struct QuickModelPickerView: View {
     
     /// 选择完成后的回调，用于关闭弹窗
     var onDismiss: (() -> Void)? = nil
+    /// 注入：判断是否为“当前已选中”（用于高亮）。未注入时走全局 Defaults。
+    var isInstanceSelected: (CustomModelInstance) -> Bool = { p in
+        Defaults[.defaultSource] == "provider" && Defaults[.selectedProviderInstanceId] == p.id
+    }
+    var isAccountSelected: (String, String) -> Bool = { provider, modelId in
+        Defaults[.defaultSource] == "account" && Defaults[.selectedProvider] == provider && Defaults[.selectedModelId] == modelId
+    }
+    /// 注入：执行选择行为（用于会话级选择等）。未注入时写入全局 Defaults。
+    var onPickInstance: ((CustomModelInstance) -> Void)? = nil
+    var onPickRemote: ((RemoteModelItem) -> Void)? = nil
 
     @State private var hoverItemId: String? = nil
     @State private var anchorView: NSView? = nil  // 用于固定二级弹窗位置
@@ -139,26 +150,27 @@ struct QuickModelPickerView: View {
         return allItems.first(where: { $0.id == id })
     }
 
-    private func isInstanceSelected(_ inst: CustomModelInstance) -> Bool {
-        Defaults[.defaultSource] == "provider" && Defaults[.selectedProviderInstanceId] == inst.id
-    }
-    private func isAccountSelected(_ provider: String, _ modelId: String) -> Bool {
-        Defaults[.defaultSource] == "account" && Defaults[.selectedProvider] == provider && Defaults[.selectedModelId] == modelId
-    }
-
     private func select(instance p: CustomModelInstance) {
-        Defaults[.selectedModelId] = p.modelId
-        Defaults[.selectedProvider] = p.provider
-        Defaults[.proxyAddress] = p.baseURL
-        Defaults[.selectedProviderInstanceId] = p.id
-        Defaults[.defaultSource] = "provider"
+        if let onPickInstance {
+            onPickInstance(p)
+        } else {
+            Defaults[.selectedModelId] = p.modelId
+            Defaults[.selectedProvider] = p.provider
+            Defaults[.proxyAddress] = p.baseURL
+            Defaults[.selectedProviderInstanceId] = p.id
+            Defaults[.defaultSource] = "provider"
+        }
         onDismiss?()
     }
 
     private func select(remote item: RemoteModelItem) {
         switch item.gate {
         case .available:
-            manager.select(remote: item, onLogin: {}, onUpgrade: { _ in })
+            if let onPickRemote {
+                onPickRemote(item)
+            } else {
+                manager.select(remote: item, onLogin: {}, onUpgrade: { _ in })
+            }
             onDismiss?()
         case .loginRequired:
             #if os(macOS)

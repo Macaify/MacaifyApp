@@ -1336,11 +1336,27 @@ private struct InputBar: View {
                 .background(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.25)))
                 .background(
                     AnchoredPopover(isPresented: $showSessionPicker, preferredDirection: .above) {
-                        QuickModelPickerView(onDismiss: {
-                            showSessionPicker = false
-                            // 将最新选择应用到当前会话
-                            applySelectedModelToConversation()
-                        })
+                        QuickModelPickerView(
+                            onDismiss: { showSessionPicker = false },
+                            isInstanceSelected: { inst in bot.modelSource == "instance" && bot.modelInstanceId == inst.id },
+                            isAccountSelected: { _, modelId in bot.modelSource == "account" && bot.modelId == modelId },
+                            onPickInstance: { inst in
+                                var updated = bot
+                                updated.modelSource = "instance"
+                                updated.modelInstanceId = inst.id
+                                updated.modelId = ""
+                                updated.save()
+                                viewModel.updateConversation(updated)
+                            },
+                            onPickRemote: { item in
+                                var updated = bot
+                                updated.modelSource = "account"
+                                updated.modelId = item.slug
+                                updated.modelInstanceId = ""
+                                updated.save()
+                                viewModel.updateConversation(updated)
+                            }
+                        )
                     }
                 )
 
