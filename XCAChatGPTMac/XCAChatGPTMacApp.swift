@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Foundation
 import AppKit
 import AppUpdater
 import BetterAuth
@@ -232,6 +233,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 //        FirebaseApp.configure()
 //        MenuBarManager.shared.setupMenus()
         AULog.printLog = true
+        // Run one-time data migrations on startup
+        DataMigrationManager.shared.runMigrations()
         AppUpdaterHelper.shared.initialize()
         globalMonitor.start()
         globalMonitor.updateModifier(appShortcutKey())
@@ -249,6 +252,74 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let w = NSApp.windows.first { w.makeKeyAndOrderFront(nil) }
         NSApp.activate(ignoringOtherApps: true)
         return true
+    }
+}
+
+// MARK: - Centralized data migration manager
+final class DataMigrationManager {
+    static let shared = DataMigrationManager()
+    private init() {}
+
+    private let providersKey = "custom.providers"
+    private let providerFieldMigrationKey = "custom.providers.migratedProviderField.2025-10-25"
+    private let baseURLV1MigrationKey = "custom.providers.migratedBaseURLv1.2025-10-25"
+
+    func runMigrations() {
+        migrateProvidersFieldIfNeeded()
+        migrateBaseURLV1IfNeeded()
+    }
+
+    private func migrateProvidersFieldIfNeeded() {
+        let ud = UserDefaults.standard
+//        guard !ud.bool(forKey: providerFieldMigrationKey) else { return }
+        guard let data = ud.data(forKey: providersKey) else { ud.set(true, forKey: providerFieldMigrationKey); return }
+        do {
+            var list = try JSONDecoder().decode([CustomModelInstance].self, from: data)
+            var changed = false
+            for i in 0..<list.count {
+                let v = list[i].provider.lowercased()
+                if v == "compatible" || v == "anthropic" {
+                    list[i].provider = "openai"
+                    changed = true
+                }
+            }
+            if changed {
+                let out = try JSONEncoder().encode(list)
+                ud.set(out, forKey: providersKey)
+            }
+            ud.set(true, forKey: providerFieldMigrationKey)
+        } catch {
+            ud.set(true, forKey: providerFieldMigrationKey)
+        }
+    }
+
+    private func migrateBaseURLV1IfNeeded() {
+        let ud = UserDefaults.standard
+        guard !ud.bool(forKey: baseURLV1MigrationKey) else { return }
+        guard let data = ud.data(forKey: providersKey) else { ud.set(true, forKey: baseURLV1MigrationKey); return }
+        do {
+            var list = try JSONDecoder().decode([CustomModelInstance].self, from: data)
+            var changed = false
+            for i in 0..<list.count {
+                let raw = list[i].baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !raw.isEmpty else { continue }
+                if let comp = URLComponents(string: raw) {
+                    let path = comp.path
+                    if !path.hasPrefix("/v1") {
+                        let trimmed = raw.hasSuffix("/") ? String(raw.dropLast()) : raw
+                        list[i].baseURL = trimmed + "/v1"
+                        changed = true
+                    }
+                }
+            }
+            if changed {
+                let out = try JSONEncoder().encode(list)
+                ud.set(out, forKey: providersKey)
+            }
+            ud.set(true, forKey: baseURLV1MigrationKey)
+        } catch {
+            ud.set(true, forKey: baseURLV1MigrationKey)
+        }
     }
 }
 

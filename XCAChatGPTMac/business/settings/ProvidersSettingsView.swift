@@ -24,18 +24,7 @@ final class ProviderStore: ObservableObject {
     init() {
         if let data = UserDefaults.standard.data(forKey: key),
            let list = try? JSONDecoder().decode([CustomModelInstance].self, from: data) {
-            // 数据迁移：将旧的 provider 值（compatible/anthropic）统一为 openai
-            var migrated = list
-            var changed = false
-            for i in 0..<migrated.count {
-                let p = migrated[i]
-                if p.provider.lowercased() == "compatible" || p.provider.lowercased() == "anthropic" {
-                    migrated[i].provider = "openai"
-                    changed = true
-                }
-            }
-            providers = migrated
-            if changed { persist() }
+            providers = list
         }
     }
     private func persist() {
