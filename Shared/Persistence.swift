@@ -76,7 +76,20 @@ struct PersistenceController {
 
         // 执行查询
         do {
-            let conversations = try context.fetch(fetchRequest)
+            var conversations = try context.fetch(fetchRequest)
+            // One-time migration: ensure every conversation has a stable UUID
+            var needsSave = false
+            for conv in conversations {
+                if (conv.value(forKey: "uuid_") as? UUID) == nil {
+                    conv.uuid = UUID()
+                    needsSave = true
+                }
+            }
+            if needsSave {
+                do { try context.save() } catch { print("Error saving migrated conversation UUIDs: \(error)") }
+                // Refresh the array to reflect saved values
+                conversations = try context.fetch(fetchRequest)
+            }
             return conversations
         } catch {
             print("Error fetching conversations: \(error)")

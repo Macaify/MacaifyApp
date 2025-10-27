@@ -312,7 +312,8 @@ struct ChatDetailView: View {
             viewModel.updateConversation(bot)
             ensureSelectionIfNeeded()
         }
-        .onChange(of: bot.id) { newBotID in
+        // Use Core Data object identity instead of an auto-generated UUID
+        .onChange(of: bot.objectID.uriRepresentation()) { _ in
             // 切换到其他 Agent：刷新会话列表与消息，并关闭快捷面板
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                 viewModel.updateConversation(bot)

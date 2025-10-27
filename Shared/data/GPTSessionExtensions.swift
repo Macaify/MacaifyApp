@@ -3,7 +3,13 @@ import CoreData
 
 extension GPTSession {
     public var id: UUID {
-        get { return uuid_ ?? UUID() }
+        get {
+            if let u = uuid_ { return u }
+            // Initialize missing UUID once to ensure stable identity
+            let u = UUID()
+            uuid_ = u
+            return u
+        }
         set { uuid_ = newValue }
     }
     var title: String {

@@ -113,7 +113,8 @@ final class ChatSessionViewModel: ObservableObject {
     }
 
     func updateConversation(_ next: GPTConversation) {
-        let convChanged = next.id != self.conv.id
+        // Compare via Core Data identity to avoid unstable UUIDs
+        let convChanged = next.objectID != self.conv.objectID
         self.conv = next
         let resolved = Self.resolveAPI(for: next)
         self.api = resolved.api
@@ -704,6 +705,7 @@ struct MainSplitView: View {
         } detail: {
             if let current = store.selected {
                 ChatDetailView(viewModel: chatVM, bot: current, openBotSettings: { showSettings = true }, store: store)
+                    .id(current.id)
             } else {
                 VStack { Spacer(); Text("no_bot_selected").foregroundStyle(.secondary); Spacer() }
             }

@@ -11,7 +11,13 @@ import KeyboardShortcuts
 
 extension GPTConversation {
     var uuid: UUID {
-        get { return uuid_ ?? UUID() }
+        get {
+            if let u = uuid_ { return u }
+            // Initialize missing UUID once to ensure stable identity
+            let u = UUID()
+            uuid_ = u
+            return u
+        }
         set { uuid_ = newValue }
     }
     public var id: UUID {
