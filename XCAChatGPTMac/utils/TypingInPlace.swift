@@ -38,6 +38,13 @@ class TypingInPlace: ObservableObject {
                 self.interupt()
                 self.api = conv.API
                 print("asking api \(newValue)")
+                // Mirror to main UI: show ephemeral bubbles while typing-in-place
+                NotificationCenter.default.post(name: .init("TypingInPlaceMirrorStart"), object: nil, userInfo: [
+                    "convId": conv.id.uuidString,
+                    "text": newValue,
+                    "sourceBundleId": bid ?? "",
+                    "sourceAppName": name ?? ""
+                ])
                 self.sendTask = Task { [weak self] in
                     do {
                         guard let self = self else { return }
@@ -57,8 +64,15 @@ class TypingInPlace: ObservableObject {
                             }
                         }
                         for try await answer in stream {
-                            sentence += answer.choices.first?.delta.content ?? ""
-                            print("sentence \(sentence)", answer.choices.first?.delta.content)
+                            let delta = answer.choices.first?.delta.content ?? ""
+                            guard !delta.isEmpty else { continue }
+                            sentence += delta
+                            // Mirror streaming delta to main UI
+                            NotificationCenter.default.post(name: .init("TypingInPlaceMirrorDelta"), object: nil, userInfo: [
+                                "convId": conv.id.uuidString,
+                                "delta": delta
+                            ])
+                            print("sentence \(sentence)", delta)
                         }
                         
                         self.interupt()
@@ -66,10 +80,17 @@ class TypingInPlace: ObservableObject {
                             paste(delay: 0, sentence: sentence)
                             sentence = ""
                         }
+                        // Signal finish (UI can persist if desired)
+                        NotificationCenter.default.post(name: .init("TypingInPlaceMirrorEnd"), object: nil, userInfo: [
+                            "convId": conv.id.uuidString
+                        ])
                     }
                     catch {
                         self?.interupt()
                         print("[TIP] stream error: \(error)")
+                        NotificationCenter.default.post(name: .init("TypingInPlaceMirrorEnd"), object: nil, userInfo: [
+                            "convId": conv.id.uuidString
+                        ])
                     }
                 }
             }
@@ -81,6 +102,10 @@ class TypingInPlace: ObservableObject {
         self.api = conv.API
         self.api?.systemPrompt = context
         print("asking api \(command), system prompt \(conv.API.systemPrompt)")
+        NotificationCenter.default.post(name: .init("TypingInPlaceMirrorStart"), object: nil, userInfo: [
+            "convId": conv.id.uuidString,
+            "text": command
+        ])
         self.sendTask = Task { [weak self] in
             do {
                 guard let self = self else { return }
@@ -101,7 +126,13 @@ class TypingInPlace: ObservableObject {
                     }
                 }
                 for try await answer in stream {
-                    sentence += answer.choices.first?.delta.content ?? ""
+                    let delta = answer.choices.first?.delta.content ?? ""
+                    guard !delta.isEmpty else { continue }
+                    sentence += delta
+                    NotificationCenter.default.post(name: .init("TypingInPlaceMirrorDelta"), object: nil, userInfo: [
+                        "convId": conv.id.uuidString,
+                        "delta": delta
+                    ])
                 }
                 
                 self.interupt()
@@ -109,10 +140,16 @@ class TypingInPlace: ObservableObject {
                     paste(delay: 0, sentence: sentence)
                     sentence = ""
                 }
+                NotificationCenter.default.post(name: .init("TypingInPlaceMirrorEnd"), object: nil, userInfo: [
+                    "convId": conv.id.uuidString
+                ])
             }
             catch {
                 self?.interupt()
                 print("[TIP] stream error: \(error)")
+                NotificationCenter.default.post(name: .init("TypingInPlaceMirrorEnd"), object: nil, userInfo: [
+                    "convId": conv.id.uuidString
+                ])
             }
         }
     }

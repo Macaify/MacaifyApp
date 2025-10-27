@@ -131,6 +131,17 @@ final class ChatSessionViewModel: ObservableObject {
         }
     }
 
+    // Lightweight conversation switch used by TypingInPlace mirroring.
+    // Does not reset pending state or trigger loadHistory to avoid racing away ephemeral bubbles.
+    func updateConversationForMirroring(_ next: GPTConversation) {
+        self.conv = next
+        let resolved = Self.resolveAPI(for: next)
+        self.api = resolved.api
+        self.lastConfig = resolved.cfg
+        self.configHint = resolved.hint
+        self.modelLabel = self.modelLabelText(for: resolved.cfg)
+    }
+
     private func setError(_ message: String, primaryTitle: String? = nil, secondaryTitle: String? = nil, primary: (() -> Void)? = nil, secondary: (() -> Void)? = nil) {
         self.error = message
         self.errorPrimaryTitle = primaryTitle
@@ -221,12 +232,8 @@ final class ChatSessionViewModel: ObservableObject {
 
     @MainActor
     func loadHistory(limit: Int = 80) async {
-        // 当准备开启临时会话时，不要回填旧会话历史，避免视觉上与上一会话混在一起
-        if pendingNewSession {
-            messages = []
-            
-            api.history = []
-            tokenHint = ""
+        // 当准备开启临时会话或当前正在流式时，跳过历史加载，避免清空临时气泡
+        if pendingNewSession || messages.last?.isStreaming == true {
             return
         }
         messages = []
@@ -428,6 +435,44 @@ final class ChatSessionViewModel: ObservableObject {
         if !contextPinned {
             contextSnippet = nil
             persistContextToCurrentSession()
+        }
+    }
+
+    // MARK: - Mirroring for TypingInPlace (In-Context)
+    // Show the same ephemeral bubbles in the main UI while typing into other apps.
+    @MainActor
+    func mirrorStart(user text: String) {
+        // Keep in pending-new-session so ChatDetailView renders ephemeral list instead of persisted rows.
+        pendingNewSession = true
+        messages.removeAll()
+        input = ""
+        error = nil
+        messages.append(.init(sender: .user, text: text))
+        messages.append(.init(sender: .assistant, text: "", isStreaming: true))
+        updateTokenHint(includingInput: "")
+    }
+
+    @MainActor
+    func mirrorDelta(_ delta: String) {
+        guard !delta.isEmpty else { return }
+        if let idx = messages.lastIndex(where: { $0.isStreaming && $0.sender == .assistant }) {
+            messages[idx].text += delta
+        }
+    }
+
+    @MainActor
+    func mirrorFinish(persistResult: Bool = true) {
+        if let idx = messages.lastIndex(where: { $0.isStreaming && $0.sender == .assistant }) {
+            messages[idx].isStreaming = false
+            if persistResult {
+                let user = messages.prefix(idx).last(where: { $0.sender == .user })?.text ?? ""
+                let assistant = messages[idx].text
+                if !assistant.isEmpty {
+                    persist(user: user, assistant: assistant)
+                }
+                // After persistence, switch to normal session mode next render
+                pendingNewSession = false
+            }
         }
     }
 
@@ -753,6 +798,34 @@ struct MainSplitView: View {
                     chatVM.input = text
                     Task { await chatVM.send() }
                 }
+            }
+        }
+        // Mirror TypingInPlace streaming into the main UI
+        .onReceive(NotificationCenter.default.publisher(for: .init("TypingInPlaceMirrorStart"))) { note in
+            guard let info = note.userInfo as? [String: Any] else { return }
+            let convIdStr = (info["convId"] as? String) ?? ""
+            let text = (info["text"] as? String) ?? ""
+            if let uuid = UUID(uuidString: convIdStr), let bot = store.bots.first(where: { $0.id == uuid }) {
+                store.selectedID = uuid
+                // Rebuild API without triggering history load/reset
+                chatVM.updateConversationForMirroring(bot)
+                // Enter pending-new-session mode and seed ephemeral bubbles
+                chatVM.mirrorStart(user: text)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .init("TypingInPlaceMirrorDelta"))) { note in
+            guard let info = note.userInfo as? [String: Any] else { return }
+            let convIdStr = (info["convId"] as? String) ?? ""
+            let delta = (info["delta"] as? String) ?? ""
+            if let uuid = UUID(uuidString: convIdStr), let _ = store.bots.first(where: { $0.id == uuid }) {
+                chatVM.mirrorDelta(delta)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .init("TypingInPlaceMirrorEnd"))) { note in
+            guard let info = note.userInfo as? [String: Any] else { return }
+            let convIdStr = (info["convId"] as? String) ?? ""
+            if let uuid = UUID(uuidString: convIdStr), let _ = store.bots.first(where: { $0.id == uuid }) {
+                chatVM.mirrorFinish(persistResult: true)
             }
         }
         .toolbar { toolbar }

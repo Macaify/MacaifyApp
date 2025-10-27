@@ -294,6 +294,9 @@ struct ChatDetailView: View {
                 .onChange(of: viewModel.messages.count) { _ in
                     if let last = viewModel.messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
                 }
+                .onChange(of: viewModel.messages.last?.text) { _ in
+                    if let last = viewModel.messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
+                }
             }
             Divider()
             InputBar(viewModel: viewModel, bot: bot, store: store, openQuickActions: {
@@ -475,16 +478,21 @@ private struct SessionMessagesView: View {
                     bubble(text: row.response, sender: .assistant)
                 }
             }
-            // Streaming assistant bubble (not persisted yet)
-            if let streaming = viewModel.messages.last(where: { $0.isStreaming && $0.sender == .assistant }) {
-                bubble(text: streaming.text, sender: .assistant, streaming: true)
+            // Ephemeral user + streaming assistant bubbles (not persisted yet)
+            if let sIdx = viewModel.messages.lastIndex(where: { $0.isStreaming && $0.sender == .assistant }) {
+                if sIdx > 0 {
+                    let u = viewModel.messages[sIdx - 1]
+                    if u.sender == .user { bubble(text: u.text, sender: .user, id: u.id) }
+                }
+                let streaming = viewModel.messages[sIdx]
+                bubble(text: streaming.text, sender: .assistant, id: streaming.id, streaming: true)
             }
         }
         .padding(12)
     }
 
     @ViewBuilder
-    private func bubble(text: String, sender: ChatSessionViewModel.ChatMessage.Sender, streaming: Bool = false) -> some View {
+    private func bubble(text: String, sender: ChatSessionViewModel.ChatMessage.Sender, id: UUID? = nil, streaming: Bool = false) -> some View {
         let label = sender == .user ? String(localized: "you") : String(localized: "assistant")
         HStack(alignment: .top, spacing: 0) {
             VStack(alignment: .leading, spacing: 6) {
@@ -510,7 +518,7 @@ private struct SessionMessagesView: View {
             .cornerRadius(12)
         }
         .frame(maxWidth: .infinity, alignment: sender == .user ? .trailing : .leading)
-        .id(UUID())
+        .id(id ?? UUID())
         .contextMenu {
             Button { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(text, forType: .string) } label: { Label("copy", systemImage: "doc.on.doc") }
             Button {
