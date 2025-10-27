@@ -24,13 +24,13 @@
 "quick_access_description" = "Call out anytime, anywhere, and start asking questions and getting answers immediately";
 "hold_cmd_for_shortcuts" = "Hold ⌘ to display keyboard shortcuts";
 "shortcuts_help_description" = "Keyboard shortcuts help you put down the mouse and operate the app entirely with shortcuts by holding ⌘ to display them";
-"bots_plaza" = "Bots Plaza";
-"bots_plaza_description" = "In the Bots Plaza, hundreds of bot assistants are waiting for you to try out!";
+"bots_plaza" = "Agent Plaza";
+"bots_plaza_description" = "In the Agent Plaza, hundreds of agents are waiting for you to try out!";
 "unlimited_bots" = "Unlimited number of bots";
 "custom_bots_description" = "Quickly add your custom bots 🤖️ assistant to complete a variety of complex operations";
 "ok" = "OK";
 "add_icon" = "􀎸 Add Icon";
-"bot_name" = "Bot Name";
+"bot_name" = "Agent Name";
 "system_prompt" = "System Prompt";
 "hotkey" = "Hotkey";
 "use_context" = "Use Context";
@@ -39,7 +39,7 @@
 "experimental_function" = "Experimental function";
 "cmd_n" = "⌘N";
 "cmd_press_and_hold" = "⌘ Press and hold";
-"create_bot" = "Create a Bot";
+"create_bot" = "Create an Agent";
 "error"="Error";
 "user_cannot_empty"="User name canat be empty";
 "display_shortcut_tips" = "Display shortcut tips";
@@ -49,7 +49,7 @@
 "select" = "Select";
 "esc" = "esc";
 "cancel_selection" = "Cancel Selection";
-"bots" = "Bots";
+"bots" = "Agents";
 "website" = "Website";
 "feedback" = "Feedback";
 "twitter" = "Twitter";
@@ -68,9 +68,9 @@
 "edit" = "Edit";
 "lets_chat" = "Let's Chat";
 "add_to_favorites" = "Add to Favorites";
-"input_bot_name" = "Input a bot name for easy memory";
+"input_bot_name" = "Enter an agent name for easy recall";
 "tap_to_chat" = "Tap to chat";
-"edit_bot" = "Edit Bot";
+"edit_bot" = "Edit Agent";
 "search" = "Search";
 "casual_chat" = "Casual chat";
 "set_shortcuts" = "Set shortcuts";
@@ -101,7 +101,7 @@
 "model_selection"="Model Selection";
 "api_format"="API Format";
 "system_settings" = "System Settings";
-"prompt_placeholder" = "Provide a system prompt to this bot";
+"prompt_placeholder" = "Provide a system prompt to this agent";
 "delete" = "Delete";
 "max_token" = "Max Token";
 "base_url" = "Base URL";
@@ -147,9 +147,9 @@
 "you" = "You";
 "assistant" = "Assistant";
 "chat" = "Chat";
-"no_bot_selected" = "No Bot Selected";
-"bot_settings" = "Bot Settings";
-"new_bot" = "New Bot";
+"no_bot_selected" = "No Agent Selected";
+"bot_settings" = "Agent Settings";
+"new_bot" = "New Agent";
 "untitled" = "Untitled";
 "basics" = "Basics";
 "rename" = "Rename";
@@ -298,3 +298,10 @@
 "quota_exceeded" = "Quota exceeded.";
 "trial_expired" = "Trial expired.";
 "account_auth_unavailable" = "Account auth not available for this provider.";
+
+// Bot templates and picker (UI)
+"选择机器人模板" = "Choose Agent Template";
+"搜索" = "Search";
+"新建空白Bot" = "New Blank Agent";
+"从模板添加…" = "Add From Template…";
+"agents" = "Agents";

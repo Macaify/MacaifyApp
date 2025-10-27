@@ -25,22 +25,22 @@
 "quick_access_description"="任意场景快速呼出，立即开始提问并获得答案";
 "hold_cmd_for_shortcuts"="长按 ⌘ 显示快捷键提示";
 "shortcuts_help_description"="快捷键提示帮助你放下鼠标，全程快捷键操作";
-"bots_plaza"="机器人广场";
-"bots_plaza_description"="在机器人广场，上百种机器人助理等你试玩！";
-"unlimited_bots"="无限制的机器人数量";
-"custom_bots_description"="快速添加你的自定义机器人🤖️助理，完成多种复杂操作";
+"bots_plaza"="Agent 广场";
+"bots_plaza_description"="在 Agent 广场，上百种 Agent 助理等你试玩！";
+"unlimited_bots"="不限数量的 Agent";
+"custom_bots_description"="快速添加你的自定义 Agent 🤖️ 助理，完成多种复杂操作";
 "ok"="确定";
 "add_icon"="􀎸 添加图标";
-"bot_name"="名字";
+"bot_name"="Agent 名称";
 "system_prompt"="系统指令";
 "hotkey"="快捷键";
 "use_context"="使用上下文";
 "enable"="启用";
 "tip_mode"="TIP 模式";
 "experimental_function"="实验功能";
-"tip_mode_description"="Typing In Place. 开启后，选中第三方 App 输入框中的文字按下快捷键后不会打开窗口，而是会用机器人的回复直接替换原有文字";
+"tip_mode_description"="Typing In Place。开启后，选中第三方 App 输入框中的文字按下快捷键后不会打开窗口，而是用 Agent 的回复直接替换原有文字";
 "cmd_press_and_hold"="⌘按住";
-"create_bot"="添加机器人";
+"create_bot"="添加 Agent";
 "error"="错误";
 "user_cannot_empty"="用户名不能为空";
 "display_shortcut_tips"="显示快捷提示";
@@ -69,9 +69,9 @@
 "edit"="编辑";
 "lets_chat"="聊聊看";
 "add_to_favorites"="添加到常用";
-"input_bot_name"="输入机器人名称方便记忆";
+"input_bot_name"="输入 Agent 名称方便记忆";
 "tap_to_chat"="按 Tab 聚焦";
-"edit_bot"="编辑机器人";
+"edit_bot"="编辑 Agent";
 "search"="搜索";
 "casual_chat"="随便聊聊";
 "set_shortcuts"="设置快捷键";
@@ -102,7 +102,7 @@
 "model_selection"="选择模型";
 "api_format"="接口格式";
 "system_settings"="系统设置";
-"prompt_placeholder"="设定这个机器人的系统 Prompt";
+"prompt_placeholder"="设定这个 Agent 的系统 Prompt";
 "delete"="删除";
 "max_token" = "最大 Token";
 "base_url" = "代理地址";
@@ -148,9 +148,9 @@
 "you" = "你";
 "assistant" = "助手";
 "chat" = "聊天";
-"no_bot_selected" = "未选择机器人";
-"bot_settings" = "Bot 设置";
-"new_bot" = "新建机器人";
+"no_bot_selected" = "未选择 Agent";
+"bot_settings" = "Agent 设置";
+"new_bot" = "新建 Agent";
 "untitled" = "未命名";
 "basics" = "基础";
 "rename" = "重命名";
@@ -236,3 +236,10 @@
 "quota_exceeded" = "本期配额已用尽。";
 "trial_expired" = "试用已到期。";
 "account_auth_unavailable" = "该平台不支持账户登录。";
+
+// 机器人模板选择
+"选择机器人模板" = "选择 Agent 模板";
+"搜索" = "搜索";
+"新建空白Bot" = "新建空白 Agent";
+"从模板添加…" = "从模板添加…";
+"agents" = "Agent 列表";

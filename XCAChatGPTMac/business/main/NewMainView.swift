@@ -48,6 +48,17 @@ final class BotStore: ObservableObject {
         selectedID = bots.first?.id
     }
 
+    func addBot(from template: PromptTemplate) {
+        let conv = GPTConversation.new
+        conv.name = template.title
+        conv.prompt = template.prompt
+        conv.withContext = true
+        conv.timestamp = Date()
+        conv.copyToCoreData().save()
+        reload()
+        selectedID = bots.first?.id
+    }
+
     func deleteBot(_ bot: GPTConversation) {
         PersistenceController.shared.deleteConversation(conversation: bot)
         reload()
@@ -797,10 +808,15 @@ struct MainSplitView: View {
     @StateObject private var store = BotStore()
     @StateObject private var chatVM = ChatSessionViewModel(conversation: GPTConversation(context: PersistenceController.memoryContext))
     @State private var showSettings = false
+    @State private var showBotTemplatePicker = false
+    @State private var botTemplateResetKey = 0
 
     var body: some View {
         NavigationSplitView {
-            Sidebar(store: store)
+            Sidebar(store: store, openTemplatePicker: {
+                botTemplateResetKey &+= 1
+                showBotTemplatePicker = true
+            })
         } detail: {
             if let current = store.selected {
                 ChatDetailView(viewModel: chatVM, bot: current, openBotSettings: { showSettings = true }, store: store)
@@ -894,20 +910,20 @@ struct MainSplitView: View {
                     .environmentObject(PathManager.shared)
             }
         }
+        .sheet(isPresented: $showBotTemplatePicker) {
+            BotTemplatePicker(resetKey: botTemplateResetKey) { tpl in
+                store.addBot(from: tpl)
+                if let s = store.selected { chatVM.updateConversation(s) }
+                showBotTemplatePicker = false
+            }
+            .frame(minWidth: 560, minHeight: 520)
+        }
     }
 
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
-        ToolbarItem(placement: .navigation) {
-            Button { store.addBot() } label: { Label("new_bot", systemImage: "plus") }
-        }
-        ToolbarItem(placement: .principal) { Text(store.selected?.name.isEmpty == false ? store.selected!.name : String(localized: "bots")).font(.headline) }
+        // Remove duplicate + and unknown toggle; keep clear & settings only
         ToolbarItemGroup(placement: .automatic) {
-            if let sel = store.selected {
-                Toggle(isOn: Binding(get: { sel.withContext }, set: { v in sel.withContext = v; sel.save(); chatVM.updateConversation(sel) })) {
-                    Image(systemName: sel.withContext ? "arrow.triangle.2.circlepath" : "arrow.triangle.2.circlepath.circle")
-                }.toggleStyle(.button).help("use_context")
-            }
             Button { chatVM.clearHistory() } label: { Label("clear", systemImage: "trash") }
                 .disabled(store.selected == nil)
                 .keyboardShortcut(.init("d"), modifiers: .command)
@@ -943,6 +959,7 @@ private struct HostingWindowFinder: NSViewRepresentable {
 
 struct Sidebar: View {
     @ObservedObject var store: BotStore
+    var openTemplatePicker: () -> Void
     var body: some View {
         List(selection: Binding(get: { store.selectedID }, set: { store.selectedID = $0 })) {
             ForEach(store.bots, id: \.id) { bot in
@@ -958,8 +975,17 @@ struct Sidebar: View {
             }
         }
         .listStyle(.sidebar)
-        .navigationTitle("bots")
-        .toolbar { ToolbarItem(placement: .automatic) { Button { store.addBot() } label: { Label(String(localized: "add"), systemImage: "plus") } } }
+        .navigationTitle(String(localized: "agents"))
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Menu {
+                    Button { store.addBot() } label: { Label(String(localized: "新建空白Bot"), systemImage: "plus") }
+                    Button { openTemplatePicker() } label: { Label(String(localized: "从模板添加…"), systemImage: "rectangle.stack.badge.plus") }
+                } label: {
+                    Label(String(localized: "add"), systemImage: "plus")
+                }
+            }
+        }
     }
 }
 
