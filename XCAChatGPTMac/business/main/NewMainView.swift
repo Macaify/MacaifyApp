@@ -317,12 +317,32 @@ final class ChatSessionViewModel: ObservableObject {
         // Manual selection cancels any pending "select latest" override
         selectLatestOnNextLoad = false
         selectedSessionID = session.objectID
+        // Update per-session context immediately for header
+        let snip = session.contextSnippet.trimmingCharacters(in: .whitespacesAndNewlines)
+        contextSnippet = snip.isEmpty ? nil : snip
+        let srcName = session.contextSourceAppName.trimmingCharacters(in: .whitespacesAndNewlines)
+        contextSourceAppName = srcName.isEmpty ? nil : srcName
+        let srcBid = session.contextSourceBundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+        contextSourceBundleId = srcBid.isEmpty ? nil : srcBid
+        // Refresh API history to this session on a background task
+        Task { await refreshHistoryForSelectedSession(session) }
     }
     @MainActor
     func select(id: NSManagedObjectID) {
         // Manual selection cancels any pending "select latest" override
         selectLatestOnNextLoad = false
         selectedSessionID = id
+        // Try to populate context and history for the selected id quickly
+        let ctx = PersistenceController.shared.container.viewContext
+        if let s = try? ctx.existingObject(with: id) as? GPTSession {
+            let snip = s.contextSnippet.trimmingCharacters(in: .whitespacesAndNewlines)
+            contextSnippet = snip.isEmpty ? nil : snip
+            let srcName = s.contextSourceAppName.trimmingCharacters(in: .whitespacesAndNewlines)
+            contextSourceAppName = srcName.isEmpty ? nil : srcName
+            let srcBid = s.contextSourceBundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+            contextSourceBundleId = srcBid.isEmpty ? nil : srcBid
+            Task { await refreshHistoryForSelectedSession(s) }
+        }
     }
 
     @MainActor
@@ -650,7 +670,10 @@ final class ChatSessionViewModel: ObservableObject {
     func startNewSession() {
         pendingNewSession = true
         messages.removeAll()
-        
+        // New session starts with empty per-session context
+        contextSnippet = nil
+        contextSourceAppName = nil
+        contextSourceBundleId = nil
         api.history = []
         tokenHint = ""
     }
@@ -692,6 +715,37 @@ final class ChatSessionViewModel: ObservableObject {
         }
         block += "<selectedText>\n\(raw)\n</selectedText>\n" + "</context>"
         return block
+    }
+
+    // Rebuild API history for a specific session selection
+    private func refreshHistoryForSelectedSession(_ session: GPTSession) async {
+        let container = PersistenceController.shared.container
+        let convID = conv.objectID
+        let targetID = session.objectID
+        do {
+            let rows: [(String, String)] = try await withCheckedThrowingContinuation { cont in
+                let bg = container.newBackgroundContext()
+                bg.perform {
+                    do {
+                        let convBG = try bg.existingObject(with: convID) as! GPTConversation
+                        let sessionBG = try bg.existingObject(with: targetID) as! GPTSession
+                        let req: NSFetchRequest<GPTAnswer> = GPTAnswer.fetchRequest()
+                        req.predicate = NSPredicate(format: "belongsTo == %@ AND session == %@", convBG, sessionBG)
+                        req.sortDescriptors = [NSSortDescriptor(key: "timestamp_", ascending: true)]
+                        let fetched = try bg.fetch(req)
+                        let pairs = fetched.map { ($0.prompt, $0.response) }
+                        cont.resume(returning: pairs)
+                    } catch { cont.resume(throwing: error) }
+                }
+            }
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                self.api.history = rows.flatMap { [Message(role: "user", content: $0.0), Message(role: "assistant", content: $0.1)] }
+                self.updateTokenHint(includingInput: self.input)
+            }
+        } catch {
+            await MainActor.run { [weak self] in self?.api.history = [] }
+        }
     }
 
     // Persist current context fields into the selected session (if available and not pending)
