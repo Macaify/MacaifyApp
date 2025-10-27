@@ -3,7 +3,6 @@ import SwiftUI
 enum SettingsTab: String, CaseIterable, Identifiable, Hashable {
     case account
     case providers
-    case preferences
 
     var id: String { rawValue }
 
@@ -11,7 +10,6 @@ enum SettingsTab: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .account: return String(localized: "Account")
         case .providers: return String(localized: "模型与来源")
-        case .preferences: return String(localized: "偏好设置")
         }
     }
 
@@ -19,7 +17,6 @@ enum SettingsTab: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .account: return "person.crop.circle"
         case .providers: return "server.rack"
-        case .preferences: return "slider.horizontal.3"
         }
     }
 }

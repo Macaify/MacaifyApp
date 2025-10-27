@@ -43,7 +43,7 @@ fileprivate final class BotStore: ObservableObject {
 
     func addBot() {
         let conv = GPTConversation.new
-        conv.name = "New Bot"
+        conv.name = String(localized: "new_bot")
         conv.prompt = ""
         conv.withContext = true
         conv.timestamp = Date()
@@ -188,7 +188,7 @@ struct MainSplitView: View {
             if let current = store.selected {
                 ChatDetailView(viewModel: chatVM, bot: current)
             } else {
-                VStack { Spacer(); Text("No Bot Selected").foregroundStyle(.secondary); Spacer() }
+                VStack { Spacer(); Text("no_bot_selected").foregroundStyle(.secondary); Spacer() }
             }
         }
         .navigationSplitViewStyle(.balanced)
@@ -206,7 +206,7 @@ struct MainSplitView: View {
             Button {
                 store.addBot()
             } label: {
-                Label("New Bot", systemImage: "plus")
+                Label(String(localized: "new_bot"), systemImage: "plus")
             }
         }
         ToolbarItem(placement: .principal) {
@@ -221,16 +221,16 @@ struct MainSplitView: View {
                     Image(systemName: sel.withContext ? "arrow.triangle.2.circlepath" : "arrow.triangle.2.circlepath.circle")
                 }
                 .toggleStyle(.button)
-                .help("Toggle Context")
+                .help("use_context")
             }
             Button {
                 Task { await chatVM.clearHistory() }
-            } label: { Label("Clear", systemImage: "trash") }
+            } label: { Label(String(localized: "clear"), systemImage: "trash") }
             .disabled(store.selected == nil)
             Button {
                 showSettings = true
             } label: {
-                Label("Bot Settings", systemImage: "gear")
+                Label(String(localized: "bot_settings"), systemImage: "gear")
             }
             .disabled(store.selected == nil)
         }
@@ -245,22 +245,22 @@ fileprivate struct Sidebar: View {
             ForEach(store.bots, id: \.id) { bot in
                 HStack(spacing: 8) {
                     Text(bot.icon.isEmpty ? "🤖" : bot.icon)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(bot.name.isEmpty ? "Untitled" : bot.name)
+                VStack(alignment: .leading, spacing: 2) {
+                        Text(bot.name.isEmpty ? String(localized: "untitled") : bot.name)
                         if !bot.prompt.isEmpty { Text(bot.prompt).lineLimit(1).font(.caption).foregroundStyle(.secondary) }
                     }
                 }
                 .tag(bot.id as UUID?)
                 .contextMenu {
-                    Button(role: .destructive) { store.deleteBot(bot) } label: { Label("Delete", systemImage: "trash") }
+                    Button(role: .destructive) { store.deleteBot(bot) } label: { Label(String(localized: "delete"), systemImage: "trash") }
                 }
             }
         }
         .listStyle(.sidebar)
-        .navigationTitle("Bots")
+        .navigationTitle("bots")
         .toolbar {
             ToolbarItem(placement: .automatic) {
-                Button { store.addBot() } label: { Label("Add", systemImage: "plus") }
+                Button { store.addBot() } label: { Label(String(localized: "add"), systemImage: "plus") }
             }
         }
     }
@@ -279,7 +279,7 @@ fileprivate struct ChatDetailView: View {
                             HStack(alignment: .top) {
                                 if msg.sender == .assistant { Spacer(minLength: 0) }
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Text(msg.sender == .user ? "You" : "Assistant").font(.caption).foregroundStyle(.secondary)
+                                    Text(msg.sender == .user ? String(localized: "you") : String(localized: "assistant")).font(.caption).foregroundStyle(.secondary)
                                     Text(msg.text).textSelection(.enabled)
                                 }
                                 .padding(10)
@@ -308,7 +308,7 @@ fileprivate struct ChatDetailView: View {
             }
             .padding(12)
         }
-        .navigationTitle(bot.name.isEmpty ? "Chat" : bot.name)
+        .navigationTitle(bot.name.isEmpty ? String(localized: "chat") : bot.name)
         .onAppear { viewModel.updateConversation(bot) }
     }
 }
@@ -333,19 +333,19 @@ fileprivate struct BotSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Basics") {
-                    TextField("Name", text: $name)
-                    Toggle("Carry Context", isOn: $withContext)
+                Section(String(localized: "basics")) {
+                    TextField(String(localized: "name"), text: $name)
+                    Toggle(String(localized: "use_context"), isOn: $withContext)
                 }
-                Section("System Prompt") {
+                Section(String(localized: "system_prompt")) {
                     TextEditor(text: $prompt).frame(minHeight: 160)
                 }
             }
-            .navigationTitle("Bot Settings")
+            .navigationTitle("bot_settings")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(String(localized: "cancel")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }.keyboardShortcut(.defaultAction)
+                    Button(String(localized: "save")) { save() }.keyboardShortcut(.defaultAction)
                 }
             }
         }

@@ -15,7 +15,6 @@ struct AdvancedSettingsView: View {
             }
             Section(String(localized: "语言与语音")) {
                 Toggle(String(localized: "语音聊天"), isOn: $useVoice)
-                LanguageOptions()
             }
             Section(String(localized: "应用更新")) {
                 AppUpdaterLink().environmentObject(AppUpdaterHelper.shared.updater)

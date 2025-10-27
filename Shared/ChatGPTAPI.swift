@@ -80,29 +80,30 @@ class ChatGPTAPI: @unchecked Sendable {
         var errorDescription: String? {
             switch self {
             case .notLoggedIn:
-                return "未登录，请先在设置中登录账号。"
+                return String(localized: "error_not_logged_in_go_to_settings")
             case .unauthorized:
-                return "未授权（401），请重新登录。"
+                return String(localized: "error_unauthorized")
             case .forbidden:
-                return "无权限（403），请检查账户权限。"
+                return String(localized: "error_forbidden")
             case .tooManyRequests:
-                return "请求过多（429），请稍后再试。"
+                return String(localized: "error_too_many_requests")
             case .invalidResponse:
-                return "无效响应。"
+                return String(localized: "error_invalid_response")
             case let .serverError(code, message):
-                return "服务错误（\(code)）：\(message)"
+                return String(format: String(localized: "server_error_format"), String(code), message)
             case let .planNotAllowed(model, current, required):
-                var text = "当前会员等级不支持该模型"
-                if let current { text += "（\(current)）" }
-                if let model { text += "：\(model)" }
-                if let required { text += "（需要 \(required)）" }
+                var text = String(localized: "plan_not_allowed")
+                if let current { text += String(format: String(localized: "plan_current_suffix_format"), current) }
+                if let model { text += String(format: String(localized: "plan_model_suffix_format"), model) }
+                if let required { text += String(format: String(localized: "plan_required_suffix_format"), required) }
                 return text
             case let .quotaExceeded(current):
-                return "本期配额已用尽\(current != nil ? "（\(current!)）" : "")。"
+                if let current { return String(format: String(localized: "quota_exceeded_with_plan"), current) }
+                return String(localized: "quota_exceeded")
             case .trialExpired:
-                return "试用已到期。"
+                return String(localized: "trial_expired")
             case .accountAuthUnavailable:
-                return "该平台不支持账户登录。"
+                return String(localized: "account_auth_unavailable")
             case let .network(error):
                 return error.localizedDescription
             }

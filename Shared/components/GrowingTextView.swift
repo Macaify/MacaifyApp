@@ -15,6 +15,10 @@ struct GrowingTextView: NSViewRepresentable {
     var minHeight: CGFloat
     var maxHeight: CGFloat
     var font: NSFont = .preferredFont(forTextStyle: .body)
+    var onEnter: (() -> Void)? = nil
+    var onShiftEnter: (() -> Void)? = nil
+    var onCommandEnter: (() -> Void)? = nil
+    var onCommandK: (() -> Void)? = nil
 
     func makeNSView(context: Context) -> NSScrollView {
         let textView = CustomGrowingTextView()
@@ -34,6 +38,11 @@ struct GrowingTextView: NSViewRepresentable {
         textView.textContainer?.widthTracksTextView = true
         textView.textContainer?.heightTracksTextView = false
         textView.delegate = context.coordinator
+        // Wire key handlers
+        textView.onEnter = onEnter
+        textView.onShiftEnter = onShiftEnter
+        textView.onCommandEnter = onCommandEnter
+        textView.onCommandK = onCommandK
         if let placeholder {
             textView.placeholderAttributedString = NSAttributedString(
                 string: placeholder,
@@ -58,6 +67,13 @@ struct GrowingTextView: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let textView = nsView.documentView as? NSTextView else { return }
+        // Keep key handlers in sync when SwiftUI updates the representable
+        if let tv = textView as? CustomGrowingTextView {
+            tv.onEnter = onEnter
+            tv.onShiftEnter = onShiftEnter
+            tv.onCommandEnter = onCommandEnter
+            tv.onCommandK = onCommandK
+        }
         if textView.string != text {
             textView.string = text
         }
@@ -123,6 +139,34 @@ struct GrowingTextView: NSViewRepresentable {
 // Draws placeholder text for macOS versions where NSTextView may not expose placeholder API.
 private final class CustomGrowingTextView: NSTextView {
     @objc var placeholderAttributedString: NSAttributedString?
+    var onEnter: (() -> Void)?
+    var onShiftEnter: (() -> Void)?
+    var onCommandEnter: (() -> Void)?
+    var onCommandK: (() -> Void)?
+
+    override func keyDown(with event: NSEvent) {
+        let isEnter = event.keyCode == 36 // return
+        let isK = event.keyCode == 40
+        let mods = event.modifierFlags.intersection([.command, .shift, .option, .control])
+        if isEnter {
+            if mods.contains(.command) {
+                onCommandEnter?()
+                return
+            } else if mods.contains(.shift) {
+                // Insert newline and let parent optionally react
+                super.keyDown(with: event)
+                onShiftEnter?()
+                return
+            } else {
+                onEnter?()
+                return
+            }
+        } else if isK && mods.contains(.command) {
+            onCommandK?()
+            return
+        }
+        super.keyDown(with: event)
+    }
 
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)

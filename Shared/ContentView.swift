@@ -108,21 +108,21 @@ struct ContentView: View {
 
     func bottomView(image: String, proxy: ScrollViewProxy) -> some View {
         HStack(alignment: .center, spacing: 8) {
-            PlainButton(icon: "clear", label: "删除记录 ⌘D", shortcut: .init("d"), modifiers: .command, autoShowShortcutHelp: false, showLabel: resetHovered) {
+            PlainButton(icon: "clear", label: "delete_record_cmd_d", shortcut: .init("d"), modifiers: .command, autoShowShortcutHelp: false, showLabel: resetHovered) {
                 vm.clearMessages()
             }
-            .help("删除聊天记录 ⌘D")
+            .help("delete_chat_history_cmd_d")
             .onHover { hover in
                 resetHovered = hover
             }
-            PlainButton(icon: "lasso.sparkles", label: "新聊天 ⌘N", shortcut: .init("n"), modifiers: .command, autoShowShortcutHelp: false, showLabel: newHovered) {
+            PlainButton(icon: "lasso.sparkles", label: "new_chat_cmd_n", shortcut: .init("n"), modifiers: .command, autoShowShortcutHelp: false, showLabel: newHovered) {
                 vm.clearContext()
             }
-            .help("新聊天 ⌘N")
+            .help("new_chat_cmd_n")
             .onHover { hover in
                 newHovered = hover
             }
-            InputEditor(placeholder: String("Tab to chat"), text: $vm.inputMessage, onShiftEnter: {
+            InputEditor(placeholder: String(localized: "tap_to_chat"), text: $vm.inputMessage, onShiftEnter: {
                 Task { @MainActor in
                     if !vm.inputMessage.isEmpty {
                         scrolledByUser = false
@@ -144,14 +144,14 @@ struct ContentView: View {
             if vm.isInteractingWithChatGPT {
                 HStack {
                     DotLoadingView().frame(width: 40, height: 30)
-                    PlainButton(icon: "stop.circle", label: "停止生成", backgroundColor: Color.hex(0xFF0000).opacity(0.5), foregroundColor: .white, shortcut: .init("s"), modifiers: .command) {
+                    PlainButton(icon: "stop.circle", label: "stop_generating", backgroundColor: Color.hex(0xFF0000).opacity(0.5), foregroundColor: .white, shortcut: .init("s"), modifiers: .command) {
                         scrolledByUser = false
                         vm.interupt()
                     }
                 }
             } else {
                 HStack {
-                    PlainButton(label: "发送 ↩", backgroundColor: .purple, foregroundColor: .white, shortcut: .return, autoShowShortcutHelp: false, action: {
+                    PlainButton(label: "send_enter", backgroundColor: .purple, foregroundColor: .white, shortcut: .return, autoShowShortcutHelp: false, action: {
                         Task { @MainActor in
                             if !vm.inputMessage.isEmpty {
                                 scrolledByUser = false
@@ -163,7 +163,7 @@ struct ContentView: View {
                     .disabled(vm.inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .opacity(vm.inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
 
-                    PlainButton(label: "使用回答 ⌘↩", shortcut: .return, modifiers: .command, autoShowShortcutHelp: false) {
+                    PlainButton(label: "use_response_cmd_enter", shortcut: .return, modifiers: .command, autoShowShortcutHelp: false) {
                         print("mini")
                         Task { @MainActor in
                             print("mini")

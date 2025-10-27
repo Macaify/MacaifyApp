@@ -102,11 +102,11 @@ struct MessageRowView: View {
             messageBubble(text: text, isResponse: isResponse, isStreaming: showDotLoading)
             
             if let error = responseError {
-                Text("Error: \(error)")
+                (Text("error") + Text(": ") + Text(error))
                     .foregroundColor(.red)
                     .multilineTextAlignment(.leading)
                 
-                Button("Regenerate response") {
+                Button("regenerate_response") {
                     retryCallback(message)
                 }
                 .foregroundColor(.accentColor)
@@ -126,13 +126,11 @@ struct MessageRowView: View {
 
             if responseError == nil && !showDotLoading && isResponse && !text.isEmpty {
                 HStack {
-//                    PlainButton(icon: "doc.on.doc", label: "复制") {
-                    PlainButton(icon: "doc.on.doc", label: "复制", shortcut: .init(tag.first!), modifiers: .command) {
+                    PlainButton(icon: "doc.on.doc", label: "copy", shortcut: .init(tag.first!), modifiers: .command) {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(text, forType: .string)
                     }
-//                    PlainButton(icon: "doc.on.doc", label: "复制并隐藏") {
-                    PlainButton(icon: "doc.on.doc", label: "使用回答", shortcut: .init(tag.first!), modifiers: [.command, .shift]) {
+                    PlainButton(icon: "doc.on.doc", label: "use_response", shortcut: .init(tag.first!), modifiers: [.command, .shift]) {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(text, forType: .string)
 //                        NSApplication.shared.windows.first?.miniaturize(nil)

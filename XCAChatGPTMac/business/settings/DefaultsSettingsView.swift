@@ -20,25 +20,12 @@ struct DefaultsSettingsView: View {
             }
 
             GroupBox {
-                VStack(alignment: .leading, spacing: 8) {
-                    LanguageOptions()
-                    AppUpdaterLink().environmentObject(AppUpdaterHelper.shared.updater)
-                }
+                AppUpdaterLink().environmentObject(AppUpdaterHelper.shared.updater)
             } label: {
                 Label(String(localized: "语言与更新"), systemImage: "globe")
             }
 
-            GroupBox {
-                Stepper(value: $maxToken, in: 256...200000, step: 256) {
-                    HStack {
-                        Text(String(localized: "最大 Token"))
-                        Spacer()
-                        Text("\(maxToken)").foregroundStyle(.secondary)
-                    }
-                }
-            } label: {
-                Label(String(localized: "高级"), systemImage: "slider.horizontal.3")
-            }
+            // Removed advanced Max Token control (not needed)
         }
         .groupBoxStyle(CardGroupBoxStyle())
     }

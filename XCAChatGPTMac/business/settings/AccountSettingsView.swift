@@ -14,6 +14,7 @@ enum PlanTier: String, Codable, CaseIterable, Identifiable {
 
 struct AccountSettingsView: View {
     @EnvironmentObject private var authClient: BetterAuthClient
+    @Default(.launchAtLogin) private var launchAtLogin
 
     @State private var plan: PlanTier = .free
     @State private var quotaUsed: Double = 0.12 // placeholder
@@ -39,54 +40,23 @@ struct AccountSettingsView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: SettingsTokens.spacing) {
-            accountCard
-
-            GroupBox {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(String(localized: "本周期消息"))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    HStack {
-                        ProgressView(value: quotaUsed)
-                            .frame(maxWidth: 260)
-                        Spacer()
-                        Text("\(Int(quotaUsed * 100))%")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            } label: {
-                Label(String(localized: "用量"), systemImage: "chart.bar.fill")
+        Form {
+            Section { accountCard }
+            Section(String(localized: "通用")) {
+                Toggle(String(localized: "开机启动"), isOn: $launchAtLogin)
+                    .onChange(of: launchAtLogin) { LaunchAtLoginManager.set(enabled: $0) }
+                AppUpdaterLink().environmentObject(AppUpdaterHelper.shared.updater)
             }
-
-            GroupBox {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label(String(localized: "更快响应"), systemImage: "bolt.fill")
-                    Label(String(localized: "更大上下文"), systemImage: "text.append")
-                    Label(String(localized: "视觉与推理"), systemImage: "eye")
-
-                    HStack(spacing: 12) {
-                        Button(String(localized: "升级")) {
-                            if let url = URL(string: "https://macaify.com/pricing") { NSWorkspace.shared.open(url) }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        Button(String(localized: "管理订阅")) {
-                            if let url = URL(string: "https://macaify.com/pricing") { NSWorkspace.shared.open(url) }
-                        }
-                    }
-                    .padding(.top, 6)
-                }
-                .foregroundStyle(.secondary)
-            } label: {
-                Label(String(localized: "你的计划"), systemImage: "rectangle.grid.2x2")
-            }
+            Section(String(localized: "快捷键")) { AppShortcuts() }
         }
-        .groupBoxStyle(CardGroupBoxStyle())
+        .formStyle(.grouped)
+        .onAppear {
+            if launchAtLogin != LaunchAtLoginManager.isEnabled { launchAtLogin = LaunchAtLoginManager.isEnabled }
+        }
     }
 
     private var accountCard: some View {
-        GroupBox {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 16) {
                 avatar
                 VStack(alignment: .leading, spacing: 6) {
@@ -106,9 +76,6 @@ struct AccountSettingsView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                        Text(defaultSourceText)
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
                     } else {
                         Text(String(localized: "未登录"))
                             .font(.headline)
@@ -144,8 +111,6 @@ struct AccountSettingsView: View {
                     .buttonStyle(.borderedProminent)
                 }
             }
-        } label: {
-            Label(String(localized: "账户"), systemImage: "person.fill")
         }
     }
 
@@ -179,13 +144,19 @@ struct AccountSettingsView: View {
         let next = user.membership?.nextBillingAt
         let end = user.membership?.endAt
         var parts: [String] = []
-        if let type { parts.append(String(localized: "会员：\(type)")) } else { parts.append(String(localized: "会员：Free")) }
+        // "会员：" / "Membership: " prefix + plan name
+        let prefix = String(localized: "membership_prefix")
+        parts.append(prefix + (type ?? "Free"))
+        // Dates
         if trial, let trialEnds = user.membership?.trialEndsAt {
-            parts.append(String(localized: "试用至 \(trialEnds.formatted(date: .abbreviated, time: .omitted))"))
+            let ds = trialEnds.formatted(date: .abbreviated, time: .omitted)
+            parts.append(String(format: String(localized: "trial_until"), ds))
         } else if let next {
-            parts.append(String(localized: "下次扣款 \(next.formatted(date: .abbreviated, time: .omitted))"))
+            let ds = next.formatted(date: .abbreviated, time: .omitted)
+            parts.append(String(format: String(localized: "next_charge"), ds))
         } else if let end {
-            parts.append(String(localized: "到期 \(end.formatted(date: .abbreviated, time: .omitted))"))
+            let ds = end.formatted(date: .abbreviated, time: .omitted)
+            parts.append(String(format: String(localized: "expires_on"), ds))
         }
         return parts.isEmpty ? nil : parts.joined(separator: " • ")
     }

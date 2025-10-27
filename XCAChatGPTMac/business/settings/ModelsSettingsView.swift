@@ -93,7 +93,7 @@ struct UpgradeSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(String(localized: "模型")) {
+                Section(String(localized: "model")) {
                     Text(model?.name ?? "")
                 }
                 Section(String(localized: "说明")) {

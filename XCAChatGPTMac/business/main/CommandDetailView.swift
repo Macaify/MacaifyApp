@@ -39,7 +39,7 @@ struct CommandDetailView: View {
                     }
                     
                     Spacer()
-                    PlainButton(icon: "slider.horizontal.3", label: "编辑", shortcut: .init("e"), modifiers: .command) {
+                    PlainButton(icon: "slider.horizontal.3", label: "edit", shortcut: .init("e"), modifiers: .command) {
                         print("edit command \(command.id) \(command.name)")
                         pathManager.to(target: .editCommand(command: command))
                     }

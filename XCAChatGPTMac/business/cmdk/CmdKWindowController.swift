@@ -249,7 +249,7 @@ struct CMDKView: View {
 
     var body: some View {
         VStack {
-            TextField("输入生成指令", text: $viewModel.command)
+            TextField("enter_generate_command", text: $viewModel.command)
                 .textFieldStyle(.plain)
                 .onSubmit {
                     print("Submit: \(viewModel.command)")
@@ -330,16 +330,16 @@ struct CMDKView: View {
                             performGlobalPasteShortcut()
                         }
                     } label: {
-                        Text("应用")
+                        Text("apply")
                     }.keyboardShortcut(.return, modifiers: .command)
                     Button {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(viewModel.extractSelection(), forType: .string)
                         print("copy to clipboard: \(viewModel.result)")
                     } label: {
-                        Text("复制")
+                        Text("copy")
                     }.keyboardShortcut("c", modifiers: .command)
-                    TextField("继续更改", text: $viewModel.nextCommand)
+                    TextField("continue_editing", text: $viewModel.nextCommand)
                         .textFieldStyle(.plain)
                         .onSubmit {
                             print("Submit: \(viewModel.nextCommand)")

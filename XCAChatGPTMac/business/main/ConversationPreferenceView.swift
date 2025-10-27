@@ -50,21 +50,21 @@ struct ConversationPreferenceView: View {
                 // typingInPlace choice removed; hotkey pair defines the mode
             }
             .formStyle(.grouped)
-            .navigationTitle(isNew ? "新建机器人" : "编辑机器人")
+            .navigationTitle(isNew ? String(localized: "new_bot") : String(localized: "edit_bot"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { pathManager.back() }
+                    Button(String(localized: "cancel")) { pathManager.back() }
                 }
                 if !isNew {
                     ToolbarItem(placement: .destructiveAction) {
-                        Button("删除") {
+                        Button(String(localized: "delete")) {
                             commandStore.removeCommand(conversation)
                             pathManager.toMain()
                         }
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { saveAndClose() }
+                    Button(String(localized: "done")) { saveAndClose() }
                         .keyboardShortcut(.defaultAction)
                 }
             }
@@ -195,8 +195,8 @@ struct ConversationPreferenceView: View {
     struct ModelItem: Identifiable, Hashable { let id: String; let title: String; let provider: String; let context: Int; let source: Source; let instanceId: String?; enum Source { case account, custom } }
 
     var modelUnifiedSelection: some View {
-        Section("模型") {
-            LabeledContent("模型") {
+        Section(String(localized: "model_selection")) {
+            LabeledContent(String(localized: "model")) {
                 Button {
                     showModelPopover.toggle()
                 } label: {
@@ -234,7 +234,7 @@ struct ConversationPreferenceView: View {
 
     private var currentModelTitle: String {
         if conversation.modelSource == "instance" {
-            return ProviderStore.shared.providers.first(where: { $0.id == conversation.modelInstanceId })?.name ?? "模型"
+            return ProviderStore.shared.providers.first(where: { $0.id == conversation.modelInstanceId })?.name ?? String(localized: "model")
         } else if !conversation.modelId.isEmpty {
             // Resolve friendly name from remote catalog across providers
             let allItems = ModelSelectionManager.shared.modelsByProvider.values.flatMap { $0 }
@@ -243,7 +243,7 @@ struct ConversationPreferenceView: View {
             // Global default as fallback
             let provider = Defaults[.selectedProvider].isEmpty ? "openai" : Defaults[.selectedProvider]
             let model = Defaults[.selectedModelId]
-            if model.isEmpty { return "模型" }
+            if model.isEmpty { return String(localized: "model") }
             let name = ModelSelectionManager.shared.modelsByProvider[provider]?.first(where: { $0.slug == model })?.name ?? model
             return name
         }
@@ -252,7 +252,7 @@ struct ConversationPreferenceView: View {
     private var modelPickerPopover: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 6) {
-                TextField("Search...", text: Binding(
+                TextField("search_ellipsis", text: Binding(
                     get: { _search }, set: { _search = $0 }
                 )).textFieldStyle(.roundedBorder)
                 List(selection: $selectedModel) {
@@ -270,10 +270,10 @@ struct ConversationPreferenceView: View {
                 if let h = (selectedModel ?? hoverModel) {
                     Text(h.title).font(.headline)
                     Divider()
-                    LabeledContent("模型接口") { Text(h.provider) }
-                    LabeledContent("上下文") { Text("\(h.context) tokens") }
+                    LabeledContent(String(localized: "model_provider")) { Text(h.provider) }
+                    LabeledContent(String(localized: "use_as_context")) { Text("\(h.context) tokens") }
                 } else {
-                    Text("悬停以查看详情").foregroundStyle(.secondary)
+                    Text("hover_for_details").foregroundStyle(.secondary)
                 }
                 Spacer()
             }

@@ -15,7 +15,7 @@ struct OnKeyPressed: ViewModifier {
     @Environment(\.scenePhase) private var scenePhase
 
     func body(content: Content) -> some View {
-        var listener = KeyboardListener(target: PathManager.shared.top, keyAction: keyAction, callback: callback)
+        var listener = KeyboardListener(target: nil, keyAction: keyAction, callback: callback)
         content.background(listener)
             .onAppear {
                 listener.window = NSApplication.shared.keyWindow
@@ -56,8 +56,10 @@ struct OnKeyPressed: ViewModifier {
                     let tA = parent.target
                     let tB = PathManager.shared.top
                     let sameCase: Bool = {
+                        // If no target specified, always allow handling
+                        guard let tA else { return true }
                         switch (tA, tB) {
-                        case (.some(.main), .some(.main)), (.some(.setting), .some(.setting)), (.some(.addCommand), .some(.addCommand)), (.some(.playground), .some(.playground)), (.some(.editCommand), .some(.editCommand)), (.some(.chat), .some(.chat)):
+                        case (.main, .some(.main)), (.setting, .some(.setting)), (.addCommand, .some(.addCommand)), (.playground, .some(.playground)), (.editCommand, .some(.editCommand)), (.chat, .some(.chat)):
                             return true
                         default:
                             return false

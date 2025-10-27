@@ -17,19 +17,19 @@ struct TokenizerView: View {
             inputSection
             outputSection
         }
-        .navigationTitle("GPT Tokenizer")
+        .navigationTitle("gpt_tokenizer")
     }
     
     var inputSection: some View {
         Section {
-            TextField("Enter text to tokenize", text: $vm.inputText, axis: .vertical)
+            TextField("enter_text_to_tokenize", text: $vm.inputText, axis: .vertical)
                 .focused($isFocused)
                 .lineLimit(4...12)
                 .toolbar {
                     ToolbarItem(placement: .keyboard) {
                         HStack {
                             Spacer()
-                            Button("Done") {
+                            Button("done") {
                                 isFocused = false
                             }
                         }
@@ -37,7 +37,7 @@ struct TokenizerView: View {
                 }
             
             HStack {
-                Button("Clear") {
+                Button("clear") {
                     withAnimation {
                         vm.inputText = ""
                     }
@@ -45,7 +45,7 @@ struct TokenizerView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(vm.inputText.isEmpty)
                 
-                Button("Show example") {
+                Button("show_example") {
                     withAnimation {
                         vm.inputText = exampleText
                         isFocused = false
@@ -89,9 +89,9 @@ struct TokenizerView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                     
-                    Picker("Output Type", selection: $vm.outputType) {
+                    Picker("output_type", selection: $vm.outputType) {
                         Text("text").tag(OutputType.text)
-                        Text("Token Ids").tag(OutputType.tokenIds)
+                        Text("token_ids").tag(OutputType.tokenIds)
                     }
                     .pickerStyle(.segmented)
                     

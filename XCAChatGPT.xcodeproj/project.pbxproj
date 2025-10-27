@@ -154,6 +154,8 @@
 		69DEEE662A65A86C009840C6 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 69DEEE652A65A86C009840C6 /* GoogleService-Info.plist */; };
 		69DEEE692A65AA3B009840C6 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 69DEEE682A65AA3B009840C6 /* FirebaseAnalytics */; };
 		69DEEE6B2A65AA3B009840C6 /* FirebaseAnalyticsSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 69DEEE6A2A65AA3B009840C6 /* FirebaseAnalyticsSwift */; };
+		69DFA9292EAE8803008A0330 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69DFA9282EAE8803008A0330 /* LaunchAtLoginManager.swift */; };
+		69DFA92B2EAF1CFE008A0330 /* ChatDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69DFA92A2EAF1CFE008A0330 /* ChatDetailView.swift */; };
 		69F0AA012EA8FACE00AA1001 /* design/SettingsUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F0AA002EA8FACE00AA1001 /* design/SettingsUI.swift */; };
 		69FE10012EAF000100AA0001 /* backend/BackendEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE10002EAF000100AA0001 /* backend/BackendEnvironment.swift */; };
 		69FE10032EAF000100AA0001 /* backend/BackendClientFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE10022EAF000100AA0001 /* backend/BackendClientFactory.swift */; };
@@ -378,6 +380,8 @@
 		69C1A0B22D13005000AA0001 /* components/GrowingTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = components/GrowingTextView.swift; sourceTree = "<group>"; };
 		69D20BDC2EA7B17700CE87AB /* BetterAuthSwift */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = BetterAuthSwift; sourceTree = "<group>"; };
 		69DEEE652A65A86C009840C6 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		69DFA9282EAE8803008A0330 /* LaunchAtLoginManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginManager.swift; sourceTree = "<group>"; };
+		69DFA92A2EAF1CFE008A0330 /* ChatDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatDetailView.swift; sourceTree = "<group>"; };
 		69F0AA002EA8FACE00AA1001 /* design/SettingsUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = design/SettingsUI.swift; sourceTree = "<group>"; };
 		69FE10002EAF000100AA0001 /* backend/BackendEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = backend/BackendEnvironment.swift; sourceTree = "<group>"; };
 		69FE10022EAF000100AA0001 /* backend/BackendClientFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = backend/BackendClientFactory.swift; sourceTree = "<group>"; };
@@ -594,6 +598,7 @@
 		696B6B7529E178C700845C71 /* main */ = {
 			isa = PBXGroup;
 			children = (
+				69DFA92A2EAF1CFE008A0330 /* ChatDetailView.swift */,
 				696B6B8029E187B000845C71 /* AppInfo.swift */,
 				696B6B8229E188B500845C71 /* DataManager.swift */,
 				696B6B8429E18AF800845C71 /* ConversationPreferenceView.swift */,
@@ -653,6 +658,7 @@
 		696B6BAA29EC15F000845C71 /* utils */ = {
 			isa = PBXGroup;
 			children = (
+				69DFA9282EAE8803008A0330 /* LaunchAtLoginManager.swift */,
 				696EEC7A2C690F8E006B27B5 /* Differ */,
 				696B6BAB29EC160700845C71 /* StartupPasteboardManager.swift */,
 				696B6C9D2A01E63B00845C71 /* RecordManager.swift */,
@@ -1276,8 +1282,10 @@
 				696B6BA729EB29AD00845C71 /* PlainButton.swift in Sources */,
 				696B6BA529EB26D900845C71 /* ConfigurableHeaderView.swift in Sources */,
 				694053752C7ACB200015191D /* Compacts.swift in Sources */,
+				69DFA92B2EAF1CFE008A0330 /* ChatDetailView.swift in Sources */,
 				696B6B9729E2B2A700845C71 /* PurpleButtonStyle.swift in Sources */,
 				696B6B7D29E17ABD00845C71 /* KeyboardShortcutManager.swift in Sources */,
+				69DFA9292EAE8803008A0330 /* LaunchAtLoginManager.swift in Sources */,
 				696EEC832C690F8E006B27B5 /* LinkedList.swift in Sources */,
 				696B6CA22A035A7100845C71 /* EmojiManager.swift in Sources */,
 				696B6BC829F23C0B00845C71 /* QuickOpen.swift in Sources */,

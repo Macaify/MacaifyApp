@@ -113,7 +113,7 @@ struct ProvidersSettingsView: View {
                         }
                         Button(String(localized: "编辑")) { editing = p }
                             .buttonStyle(.borderless)
-                        Button(String(localized: "删除")) { remove(p) }
+                        Button(String(localized: "delete")) { remove(p) }
                             .buttonStyle(.borderless)
                     }
                     .onHover { inside in
@@ -158,18 +158,6 @@ struct ProvidersSettingsView: View {
                                         pendingUpgradePlan = plan
                                         showUpgrade = true
                                     })
-                                }
-                                .buttonStyle(.borderless)
-                                // Add as custom instance (template from remote)
-                                Button(String(localized: "添加为实例")) {
-                                    let template = CustomModelInstance(
-                                        name: item.name,
-                                        modelId: item.slug,
-                                        baseURL: "",
-                                        provider: "openai",
-                                        contextLength: item.contextTokens
-                                    )
-                                    editing = template
                                 }
                                 .buttonStyle(.borderless)
                             }
@@ -306,7 +294,7 @@ struct ProviderEditorView: View {
     @State private var showTemplateMenu: Bool = false
 
     init(provider: CustomModelInstance?, onSave: @escaping (CustomModelInstance) -> Void) {
-        let seed = provider ?? CustomModelInstance(name: "我的模型", modelId: "", baseURL: "", provider: "openai")
+        let seed = provider ?? CustomModelInstance(name: String(localized: "my_model"), modelId: "", baseURL: "", provider: "openai")
         var fixed = seed
         if fixed.provider != "openai" { fixed.provider = "openai" }
         _provider = State(initialValue: fixed)
@@ -329,7 +317,7 @@ struct ProviderEditorView: View {
                     SecureField(String(localized: "API Token"), text: $token)
                     HStack(spacing: 10) {
                         Button(action: { Task { await testConnection() } }) {
-                            if testing { ProgressView().controlSize(.small) } else { Text(String(localized: "测试连接")) }
+                            if testing { ProgressView().controlSize(.small) } else { Text(String(localized: "test_connection")) }
                         }
                         .disabled(testing || provider.modelId.trimmingCharacters(in: .whitespaces).isEmpty)
                         if let res = testResult {
@@ -379,9 +367,9 @@ struct ProviderEditorView: View {
             let reply = try await api.sendMessage("hi")
             let sample = reply.trimmingCharacters(in: .whitespacesAndNewlines)
             let brief = sample.count > 36 ? String(sample.prefix(36)) + "…" : sample
-            testResult = "✅ 连接成功"
+            testResult = String(localized: "test_success")
         } catch {
-            testResult = "❌ 失败：\(error.localizedDescription)"
+            testResult = String(localized: "test_failed_prefix") + error.localizedDescription
         }
     }
 }
@@ -401,18 +389,6 @@ private struct RemoteModelTemplatePicker: View {
                 Text(String(localized: "选择模型模板"))
                     .font(.headline)
                 Spacer()
-                #if os(macOS)
-                if manager.membership.isLoggedIn == false {
-                    Button(String(localized: "登录")) {
-                        Task {
-                            do { _ = try await authClient.browserOTT.signIn(with: .init(redirect_uri: "macaify://ott")) } catch {}
-                            await authClient.session.refreshSession()
-                            NotificationCenter.default.post(name: .init("BetterAuthSessionChanged"), object: nil)
-                            await manager.refreshRemote()
-                        }
-                    }
-                }
-                #endif
             }
             .padding(12)
             Divider()
@@ -462,14 +438,10 @@ private struct RemoteModelTemplatePicker: View {
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                 Spacer()
-                if manager.membership.isLoggedIn == false {
-                    GateBadge(text: String(localized: "登录"), tint: .gray)
-                }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
         }
         .buttonStyle(.plain)
-        .disabled(manager.membership.isLoggedIn == false)
     }
 }

@@ -23,7 +23,7 @@ struct XCAChatGPTTVApp: App {
                         .cornerRadius(32)
                         .overlay {
                             if vm.messages.isEmpty {
-                                Text("Click send to start interacting with ChatGPT")
+                                Text("click_to_start")
                                     .multilineTextAlignment(.center)
                                     .font(.headline)
                                     .foregroundColor(Color(UIColor.placeholderText))
@@ -33,7 +33,7 @@ struct XCAChatGPTTVApp: App {
                         }
                     
                     VStack {
-                        TextField("Send", text: $vm.inputMessage)
+                        TextField("send", text: $vm.inputMessage)
                         .multilineTextAlignment(.center)
                         .frame(width: 176)
                         .focused($isTextFieldFocused)
@@ -48,7 +48,7 @@ struct XCAChatGPTTVApp: App {
                             vm.inputMessage = ""
                         }
                         
-                        Button("Clear", role: .destructive) {
+                        Button("clear", role: .destructive) {
                             vm.clearMessages()
                         }
                         .frame(width: 176)

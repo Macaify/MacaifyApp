@@ -21,7 +21,7 @@ struct XCAChatGPTWatch_Watch_AppApp: App {
                     .toolbar {
                         ToolbarItemGroup {
                             HStack {
-                                Button("Send") {
+                                Button("send") {
                                     self.presentInputController(withSuggestions: []) { result in
                                         Task { @MainActor in
                                             guard !result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
@@ -31,7 +31,7 @@ struct XCAChatGPTWatch_Watch_AppApp: App {
                                     }
                                 }
                                 
-                                Button("Clear", role: .destructive) {
+                                Button("clear", role: .destructive) {
                                     vm.clearMessages()
                                 }
                                 .tint(.red)

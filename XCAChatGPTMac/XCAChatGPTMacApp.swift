@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CoreData
 import Foundation
 import AppKit
 import AppUpdater
@@ -55,6 +56,7 @@ struct XCAChatGPTMacApp: App {
         WindowGroup(id: "main") {
             MainSplitView()
                 .environmentObject(authClient)
+                .environment(\.managedObjectContext, PersistenceController.shared.container.viewContext)
                 .frame(minWidth: 920, minHeight: 600)
                 .onOpenURL { url in
                     // Forward deep links to the OTT plugin
@@ -103,7 +105,7 @@ struct XCAChatGPTMacApp: App {
                 Button {
                     TypingInPlace.shared.interupt()
                 } label: {
-                    Text("Stop ")
+                    HStack(spacing: 4) { Text("stop"); Text("") }
                     Image(systemName: "stop.circle")
                         .symbolRenderingMode(.multicolor)
                         .font(.system(size: 24))
@@ -150,13 +152,13 @@ struct XCAChatGPTMacApp: App {
             Button {
                 NSApplication.shared.terminate(nil)
             } label: {
-                Text("Quit")
+                Text("quit")
             }
             .buttonStyle(.borderless)
             .keyboardShortcut(.init("q"))
         } label: {
             if TypingInPlace.shared.typing {
-                Text("Typing\(dots)🖌️")
+                (Text("typing") + Text(dots) + Text("🖌️"))
                     .onAppear {
                         // Start the timer when the view appears
                         self.menuAnimateTimer = Timer.scheduledTimer(withTimeInterval: 1.0/3.0, repeats: true) { timer in
@@ -196,6 +198,7 @@ struct XCAChatGPTMacApp: App {
         Settings {
             StandardSettingsView()
                 .environmentObject(authClient)
+                .environment(\.managedObjectContext, PersistenceController.shared.container.viewContext)
                 .onOpenURL { url in
                     BrowserOTTDeepLinkCenter.resume(with: url)
                 }

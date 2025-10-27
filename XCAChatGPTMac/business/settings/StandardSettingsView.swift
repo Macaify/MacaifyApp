@@ -42,7 +42,6 @@ struct StandardSettingsView: View {
             switch selection ?? .account {
             case .account: AccountSettingsView().padding(24)
             case .providers: ProvidersSettingsView().padding(24)
-            case .preferences: DefaultsSettingsView().padding(24)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
