@@ -23,6 +23,70 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 Push a new release build to the App Store
 
+### mac test_changelog_assets
+
+```sh
+[bundle exec] fastlane mac test_changelog_assets
+```
+
+Test: list localized changelog assets that would be uploaded
+
+### mac test_github_upload
+
+```sh
+[bundle exec] fastlane mac test_github_upload
+```
+
+Test: create a GitHub release with localized changelog assets and optional dmg/zip if present
+
+### mac notar
+
+```sh
+[bundle exec] fastlane mac notar
+```
+
+
+
+### mac test_dmg
+
+```sh
+[bundle exec] fastlane mac test_dmg
+```
+
+
+
+### mac test_dmg_fallback
+
+```sh
+[bundle exec] fastlane mac test_dmg_fallback
+```
+
+
+
+### mac test_mv
+
+```sh
+[bundle exec] fastlane mac test_mv
+```
+
+
+
+### mac sign_zip
+
+```sh
+[bundle exec] fastlane mac sign_zip
+```
+
+
+
+### mac local_dmg
+
+```sh
+[bundle exec] fastlane mac local_dmg
+```
+
+
+
 ----
 
 This README.md is auto-generated and will be re-generated every time [_fastlane_](https://fastlane.tools) is run.

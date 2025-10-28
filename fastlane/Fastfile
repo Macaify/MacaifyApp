@@ -21,11 +21,115 @@ end
 default_platform(:mac)
 
 platform :mac do
+  # Helper method to create DMG using local create-dmg if available, otherwise use dmg plugin
+  def create_dmg_with_fallback(app_path, output_path, volume_name)
+    create_dmg_path = File.expand_path("~/Library/pnpm/create-dmg")
+
+    if File.exist?(create_dmg_path)
+      puts "Using local create-dmg command"
+      # Create temporary directory
+      temp_dir = Dir.mktmpdir("dmg_build")
+      puts "Created temporary directory: #{temp_dir}"
+
+      # Convert app_path to absolute path from fastlane directory
+      absolute_app_path = File.expand_path("#{app_path}")
+      puts "App path: #{absolute_app_path}"
+
+      begin
+        # Run create-dmg command with output to temp directory
+        sh("~/Library/pnpm/create-dmg '#{absolute_app_path}' '#{temp_dir}';true")
+
+        # Check for DMG files in temp directory
+        dmg_files = Dir.glob(File.join(temp_dir, "*.dmg"))
+
+        if dmg_files.empty?
+          UI.error("No DMG files found in temporary directory, falling back to dmg plugin")
+          dmg(path: app_path, output_path: output_path, volume_name: volume_name)
+        else
+          dmg_path = dmg_files.first
+          puts "DMG created at: #{dmg_path}"
+          # Move DMG to desired output path (relative to fastlane directory)
+          final_path = File.expand_path("../#{output_path}")
+          sh("mv '#{dmg_path}' '#{final_path}'")
+          final_path
+        end
+      rescue => e
+        UI.error("Error creating DMG with local command: #{e.message}, falling back to dmg plugin")
+        dmg(path: app_path, output_path: output_path, volume_name: volume_name)
+      ensure
+        # Clean up temporary directory
+        FileUtils.rm_rf(temp_dir) if Dir.exist?(temp_dir)
+      end
+    else
+      puts "Local create-dmg not found, using dmg plugin"
+      dmg(path: app_path, output_path: output_path, volume_name: volume_name)
+    end
+  end
+
+  # Discover localized changelog files to upload with the release.
+  # Looks for files like CHANGELOG.<lang>.md/txt/markdown (case-insensitive),
+  # as well as lowercase variants. Also includes files named `changelog.*`.
+  def find_changelog_assets
+    fastlane_dir = __dir__
+    example_root = File.expand_path('..', fastlane_dir)
+    repo_root    = File.expand_path('../..', example_root)
+
+    search_roots = [fastlane_dir, example_root, repo_root]
+    patterns = [
+      'CHANGELOG.*.md', 'CHANGELOG.*.markdown', 'CHANGELOG.*.txt',
+      'Changelog.*.md', 'Changelog.*.markdown', 'Changelog.*.txt',
+      'changelog.*.md', 'changelog.*.markdown', 'changelog.*.txt',
+      # Include extension-less variants in fastlane dir (e.g., changelog.zh)
+      'changelog.*', 'CHANGELOG.*'
+    ]
+
+    files = []
+    search_roots.each do |root|
+      patterns.each do |pat|
+        Dir.glob(File.join(root, pat), File::FNM_CASEFOLD).each do |p|
+          next unless File.file?(p)
+          next if p.include?('/.git/')
+          files << File.expand_path(p)
+        end
+      end
+    end
+
+    files.uniq
+  end
+
+  # Optionally include DMG/ZIP artifacts if they exist.
+  # If a tag is provided, prefer files whose names include the tag.
+  def find_optional_release_binaries(tag = nil)
+    build_roots = [
+      File.expand_path('../build', __dir__),
+      File.expand_path('build')
+    ].uniq
+
+    all_zips = build_roots.flat_map { |r| Dir.glob(File.join(r, '*.zip')) }
+    all_dmgs = build_roots.flat_map { |r| Dir.glob(File.join(r, '*.dmg')) }
+
+    pick_with_tag = lambda do |list|
+      return nil if list.empty?
+      candidates = if tag && !tag.to_s.empty?
+        list.select { |p| File.basename(p).include?(tag) }
+      else
+        list
+      end
+      candidates = list if candidates.empty?
+      candidates.max_by { |p| File.mtime(p) }
+    end
+
+    zip = pick_with_tag.call(all_zips)
+    dmg = pick_with_tag.call(all_dmgs)
+    [zip, dmg].compact.uniq
+  end
+
   desc "Push a new release build to the App Store"
 
   lane :release do |options|
     setup_ci if ENV['CI']
 	tag = options[:tag]
+	skip_build = options[:skip_build]
 
 	raise 'Argument tag is Missing' if tag.to_s.empty?
 	raise 'FASTLANE_APP_ID is Missing' if ENV['FASTLANE_APP_ID'].nil?
@@ -42,14 +146,18 @@ platform :mac do
 	team_id = ENV['FASTLANE_TEAM_ID']
 
 	output_name=ENV['FASTLANE_OUTPUT_NAME'] || ENV['GITHUB_REPOSITORY'].split('/').last
+	output_package_prefix=ENV['FASTLANE_OUTPUT_PACKAGE_PREFIX'] || output_name
 	output_path="build"
 
-	output_name_with_tag="#{output_name}-#{tag}"
+	output_name_with_tag="#{output_package_prefix}-#{tag}"
 	output_path_with_tag="#{output_path}/#{output_name_with_tag}"
 	puts("output path")
 	puts(output_path_with_tag)
 	puts(output_name_with_tag)
 
+    if skip_build
+	path="#{output_path}/#{output_name}.app"
+	else
 	path=build_mac_app(
         configuration: 'Release',
 		scheme: ENV['FASTLANE_BUILD_SCHEME'],
@@ -58,16 +166,19 @@ platform :mac do
 		output_name: output_name,
 		export_options: { signingStyle: "automatic", team_id: team_id }
 	)
+	end
+	puts("path:")
 	puts(path)
 	notarizedPath=notarize(
       asc_provider: team_id,
       username: apple_id,
       print_log: true,
       package: path,
-      verbose: true # Useful for showing notarization logs if it fails
+      verbose: false # Useful for showing notarization logs if it fails
     )
+	puts("notarizedPath:")
 	puts(notarizedPath)
-	dmgPath=dmg(path: path, output_path: "#{output_path_with_tag}.dmg", volume_name: output_name_with_tag)
+	dmgPath=create_dmg_with_fallback(path, "#{output_path_with_tag}.dmg", output_name_with_tag)
 	puts("dmgPath")
 	puts(dmgPath)
 	notarize(
@@ -76,13 +187,30 @@ platform :mac do
       print_log: true,
       package: dmgPath,
 	  bundle_id: app_identifier,
-      verbose: true # Useful for showing notarization logs if it fail
+      verbose: false # Useful for showing notarization logs if it fail
     )
 
-	sh("mv ../build/#{output_name}.app.zip ../build/#{output_name_with_tag}.zip")
+	sh("mv '../build/#{output_name}.app.zip' '../build/#{output_name_with_tag}.zip'")
+	puts('sign zip:')
+	puts("../build/#{output_name_with_tag}.zip")
+	sign_zip_command("../build/#{output_name_with_tag}.zip")
 
     # tag 是否包含 beta 字段
     has_beta = tag.include?("beta")
+
+    # Resolve asset paths (absolute) to avoid working directory issues
+    zip_path = File.expand_path("../build/#{output_name_with_tag}.zip", __dir__)
+    dmg_abs_path = File.expand_path(dmgPath)
+
+    # Collect localized changelog files to attach to release
+    changelog_assets = find_changelog_assets
+    if changelog_assets.empty?
+      UI.message("No localized changelog assets found to attach")
+    else
+      UI.message("Attaching localized changelog assets: \n- #{changelog_assets.join("\n- ")}")
+    end
+
+    all_assets = [zip_path, dmg_abs_path] + changelog_assets
 	github_release = set_github_release(
       repository_name: ENV['GITHUB_REPOSITORY'],
       api_token: ENV['FASTLANE_GITHUB_API_TOKEN'],
@@ -91,7 +219,120 @@ platform :mac do
       description: (File.read("changelog") rescue "No changelog provided"),
       commitish: "main",
       is_prerelease: has_beta,
-      upload_assets: ["build/#{output_name_with_tag}.zip", dmgPath]
+      upload_assets: all_assets
     )
+  end
+
+   def sign_zip_command(zip_path)
+    sh("codesign --sign 'Developer ID Application' '#{zip_path}'")
+   end
+
+  desc "Test: list localized changelog assets that would be uploaded"
+  lane :test_changelog_assets do
+    assets = find_changelog_assets
+    if assets.empty?
+      UI.message("No localized changelog assets found")
+    else
+      UI.message("Found localized changelog assets (#{assets.size}):\n- #{assets.join("\n- ")}")
+    end
+  end
+
+  desc "Test: create a GitHub release with localized changelog assets and optional dmg/zip if present"
+  lane :test_github_upload do |options|
+    repo = ENV['GITHUB_REPOSITORY']
+    token = ENV['FASTLANE_GITHUB_API_TOKEN']
+    UI.user_error!("GITHUB_REPOSITORY is Missing") if repo.to_s.empty?
+    UI.user_error!("FASTLANE_GITHUB_API_TOKEN is Missing") if token.to_s.empty?
+
+    tag = options[:tag] || Time.now.utc.strftime('test-upload-%Y%m%d%H%M%S')
+    commitish = options[:commitish] || 'main'
+    # prerelease = options.key?(:prerelease) ? !!options[:prerelease] : true
+    prerelease = tag.include?("beta")
+    dry = !!options[:dry_run]
+
+    assets = find_changelog_assets
+    UI.user_error!("No localized changelog assets found to upload") if assets.empty?
+
+    # Optionally add dmg/zip artifacts if they exist (prefer matching the tag)
+    bin_assets = find_optional_release_binaries(tag)
+    upload_assets = (assets + bin_assets).uniq
+
+    if dry
+      UI.message("[DRY RUN] Would create GitHub release with:")
+      UI.message("  repo: #{repo}")
+      UI.message("  tag: #{tag}")
+      UI.message("  prerelease: #{prerelease}")
+      UI.message("  commitish: #{commitish}")
+      UI.message("  assets:\n- #{upload_assets.join("\n- ")}")
+    else
+      set_github_release(
+        repository_name: repo,
+        api_token: token,
+        name: tag,
+        tag_name: tag,
+        description: (File.read("changelog") rescue "Test upload of localized changelogs"),
+        commitish: commitish,
+        is_prerelease: prerelease,
+        upload_assets: upload_assets
+      )
+    end
+  end
+
+  lane :notar do
+  notarize(
+ asc_provider: "JDZMWLF652",
+ username: "245976551@qq.com",
+ print_log: true,
+ package: "build/ScreenSage Pro.app",
+ verbose: false # Useful for showing notarization logs if it fails
+ )
+  end
+   lane :test_dmg do
+	dmgPath=dmg(path: "build/ScreenSage Pro.app", output_path: "build/ScreenSage-0.2.0-beta.7.dmg", volume_name: "ScreenSage-0.2.0-beta.7")
+	puts("dmg path")
+	puts(dmgPath)
+   end
+
+   lane :test_dmg_fallback do
+	dmgPath=create_dmg_with_fallback("/Users/lixindong/XcodeProjects/QuickRecorder/build/ScreenSage Pro.app", "build/ScreenSage-fallback-test.dmg", "ScreenSage-fallback-test")
+	puts("dmg path with fallback")
+	puts(dmgPath)
+   end
+
+   lane :test_mv do
+	sh("mv '../build/ScreenSage Pro.app.zip' '../build/ScreenSage Pro-0.2.0-beta.7.zip'")
+   end
+
+   lane :sign_zip do
+    sign_zip_command('../build/ScreenSage-0.2.0-beta.10.zip')
+   end
+
+  lane :local_dmg do
+    # Create temporary directory
+    temp_dir = Dir.mktmpdir("dmg_build")
+    puts "Created temporary directory: #{temp_dir}"
+    
+    begin
+      # Run create-dmg command with output to temp directory
+      sh("~/Library/pnpm/create-dmg '../build/ScreenSage Pro.app' '#{temp_dir}';true")
+      
+      # Check for DMG files in temp directory
+      dmg_files = Dir.glob(File.join(temp_dir, "*.dmg"))
+      
+      if dmg_files.empty?
+        UI.error("No DMG files found in temporary directory")
+        nil
+      else
+        dmg_path = dmg_files.first
+        puts "DMG created at: #{dmg_path}"
+        dmg_path
+      end
+    rescue => e
+      UI.error("Error creating DMG: #{e.message}")
+      nil
+    ensure
+      # Clean up temporary directory
+      #FileUtils.rm_rf(temp_dir) if Dir.exist?(temp_dir)
+    end
   end
 end

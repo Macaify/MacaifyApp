@@ -103,6 +103,7 @@ https://docs.fastlane.tools/best-practices/source-control/#source-control
 **/fastlane/test_output
 
 **/fastlane/.env.*
+fastlane/.env.*
 
 # Code Injection
 #
@@ -114,4 +115,3 @@ iOSInjectionProject/
 
 # python
 __pycache__/
-

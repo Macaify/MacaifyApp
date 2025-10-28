@@ -1,9 +1,5 @@
-#app_identifier("com.antiless.cleanclip.mac") # The bundle identifier of your app
-#apple_id("245976551@qq.com") # Your Apple Developer Portal username
-#apple_id("erioovo@gmail.com") # Your Apple Developer Portal username
-
 #itc_team_id("126383569") # App Store Connect Team ID
-#team_id("JDZMWLF652") # Developer Portal Team ID
+#team_id("") # Developer Portal Team ID
 
 # For more information about the Appfile, see:
 #     https://docs.fastlane.tools/advanced/#appfile
