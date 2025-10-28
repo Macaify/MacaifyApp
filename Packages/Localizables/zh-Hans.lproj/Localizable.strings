@@ -205,6 +205,8 @@
 "new_session_not_started" = "新会话（未开始）";
 "temporary_session_not_started" = "未开始的临时会话";
 "open_settings" = "打开设置";
+"not_configured" = "未配置";
+"instance_token_not_configured" = "该模型实例未配置 Token";
 "Account" = "账户";
 "sign_in" = "登录";
 "sign_out" = "退出登录";

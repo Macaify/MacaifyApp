@@ -90,7 +90,7 @@ struct ModelPickerPopover: View {
     private var combinedList: some View {
         // Section: 自定义
         if !store.providers.isEmpty {
-            Text(String(localized: "自定义"))
+            Text(String(localized: "customize"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 10)

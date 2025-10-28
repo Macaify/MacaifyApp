@@ -126,7 +126,8 @@ final class ModelSelectionManager: ObservableObject {
     func getSelectedModelId() -> String {
         let modelId = Defaults[.selectedModelId]
         if modelId.isEmpty {
-            return localModels.first?.id ?? "gpt-4o-mini"
+            // Fallback to our provider default model
+            return "macaify-1-mini"
         } else {
             return modelId
         }

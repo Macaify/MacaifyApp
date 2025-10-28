@@ -30,7 +30,7 @@ struct XCAChatGPTMacApp: App {
     
     @StateObject var updater = AppUpdaterHelper.shared.updater
     
-    @AppStorage("selectedLanguage") var userDefaultsSelectedLanguage: String?
+//    @AppStorage("selectedLanguage") var userDefaultsSelectedLanguage: String?
     
     @StateObject private var authClient = BetterAuthClient(
         baseURL: URL(string: "http://localhost:3000")!,
@@ -53,7 +53,7 @@ struct XCAChatGPTMacApp: App {
     }
 
     private var windowView: some Scene {
-        WindowGroup(id: "main") {
+        Window("", id: "main") {
             MainSplitView()
                 .environmentObject(authClient)
                 .environment(\.managedObjectContext, PersistenceController.shared.container.viewContext)
@@ -191,7 +191,6 @@ struct XCAChatGPTMacApp: App {
             }
         }
         .menuBarExtraStyle(.menu)
-        .environment(\.locale, .init(identifier: userDefaultsSelectedLanguage ?? "en"))
     }
 
     private var settingsView: some Scene {

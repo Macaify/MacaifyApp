@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>zh_CN</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -13,13 +18,6 @@
 			</array>
 		</dict>
 	</array>
-	<key>CFBundleLocalizations</key>
-	<array>
-		<string>en</string>
-		<string>zh_CN</string>
-	</array>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
 	<key>NSServices</key>
 	<array>
 		<dict>
@@ -36,11 +34,11 @@
 			<array>
 				<string></string>
 			</array>
-			<key>NSSendTypes</key>
+			<key>NSReturnTypes</key>
 			<array>
 				<string>NSStringPboardType</string>
 			</array>
-			<key>NSReturnTypes</key>
+			<key>NSSendTypes</key>
 			<array>
 				<string>NSStringPboardType</string>
 			</array>

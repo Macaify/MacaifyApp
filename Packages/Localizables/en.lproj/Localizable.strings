@@ -204,6 +204,8 @@
 "new_session_not_started" = "New Session (Not started)";
 "temporary_session_not_started" = "Temporary session not started";
 "open_settings" = "Open Settings";
+"not_configured" = "Not Configured";
+"instance_token_not_configured" = "Token not configured for this model instance";
 // Settings (Chinese literal keys used in code)
 "API 与网络" = "API & Network";
 "API Key" = "API Key";
@@ -213,7 +215,7 @@
 "Select" = "Select";
 "从模型模板添加" = "Add from model templates";
 "会员：Free" = "Membership: Free";
-"你可以创建多个自定义模型实例，它们会出现在‘我的模型’里供选择。Token 将安全存储在钥匙串。" = "You can create multiple custom model instances. They will appear under 'My Models'. Tokens are securely stored in Keychain.";
+"你可以创建多个自定义模型实例，它们会出现在‘我的模型’里供选择。Token 将安全存储在钥匙串。" = "You can create multiple custom model instances. They will appear under 'My Models'. Tokens are stored on-device.";
 "你的计划" = "Your Plan";
 "使用我的模型实例" = "Use my model instance";
 "保存" = "Save";

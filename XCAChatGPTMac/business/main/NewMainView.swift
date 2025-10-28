@@ -196,7 +196,7 @@ final class ChatSessionViewModel: ObservableObject {
     private static func computeHint(for conv: GPTConversation, cfg: APISendConfig) -> String? {
         var hints: [String] = []
         if conv.modelSource == "instance" {
-            if cfg.keyMasked.isEmpty { hints.append("该模型实例未配置 Token") }
+            if cfg.keyMasked.isEmpty { hints.append(String(localized: "instance_token_not_configured")) }
             if cfg.provider != "openai" && cfg.baseURL.trimmingCharacters(in: .whitespaces).isEmpty { hints.append("该实例需要设置 Base URL") }
         } else {
             // 账户模型走网关，不再需要本地 API Key 提示
@@ -223,7 +223,7 @@ final class ChatSessionViewModel: ObservableObject {
         } else {
             // account/default
             let selectedModel = conv.modelId.isEmpty ? Defaults[.selectedModelId] : conv.modelId
-            model = selectedModel.isEmpty ? (LLMModelsManager.shared.modelCategories.first?.models.first?.id ?? "gpt-4o-mini") : selectedModel
+            model = selectedModel.isEmpty ? "macaify-1-mini" : selectedModel
             // Derive provider from catalog by slug; fall back to Defaults
             if let prov = ModelSelectionManager.shared.modelsByProvider.first(where: { (_, arr) in arr.contains(where: { $0.slug == model }) })?.key {
                 provider = prov
@@ -935,6 +935,7 @@ struct MainSplitView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
+        .navigationSplitViewColumnWidth(min: 260, ideal: 320, max: 460)
         // Register the NSWindow that hosts the main chat UI
         .background(HostingWindowFinder { window in
             myWindow = window

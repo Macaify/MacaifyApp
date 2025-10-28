@@ -49,5 +49,7 @@ struct StandardSettingsView: View {
         .onChange(of: selection) { newValue in
             storedTab = (newValue ?? .account).rawValue
         }
+        .onAppear { selection = SettingsTab(rawValue: storedTab) ?? .account }
+        .onChange(of: storedTab) { _ in selection = SettingsTab(rawValue: storedTab) ?? .account }
     }
 }

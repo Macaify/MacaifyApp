@@ -37,8 +37,13 @@ class PromptStore: ObservableObject {
 //            ])
 //        ]
         do {
-            let lang = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en"
-            let filename = lang == "en" ? "prompts" : "prompts_zh"
+            // DEPRECATED: `selectedLanguage` in UserDefaults is no longer used.
+            // Use the app's current language (preferred localization) instead.
+            let preferredLang = Bundle.main.preferredLocalizations.first?.lowercased()
+                ?? Locale.preferredLanguages.first?.lowercased()
+                ?? "en"
+            let isChinese = preferredLang.hasPrefix("zh")
+            let filename = isChinese ? "prompts_zh" : "prompts"
             prompts = try parseJSONFile(filename: filename)
             filteredPrompts = prompts.flatMap({ category in
                 category.prompts

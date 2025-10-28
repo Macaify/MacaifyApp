@@ -142,7 +142,6 @@
 		69B0AA092D00000100AA0001 /* ProvidersSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA082D00000100AA0001 /* ProvidersSettingsView.swift */; };
 		69B0AA0B2D00000100AA0001 /* ModelsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA0A2D00000100AA0001 /* ModelsSettingsView.swift */; };
 		69B0AA0D2D00000100AA0001 /* AdvancedSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA0C2D00000100AA0001 /* AdvancedSettingsView.swift */; };
-		69B0AA122D0001A000AA0001 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA112D0001A000AA0001 /* KeychainHelper.swift */; };
 		69B0AA132D0002B000AA0001 /* StandardSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA142D0002B000AA0001 /* StandardSettingsView.swift */; };
 		69C0F0022D11111100AA0001 /* NewMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69C0F0012D11111100AA0001 /* NewMainView.swift */; };
 		69C1A0012D11222200AA0001 /* GPTSessionExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69C1A0002D11222200AA0001 /* GPTSessionExtensions.swift */; };
@@ -157,6 +156,8 @@
 		69DFA9292EAE8803008A0330 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69DFA9282EAE8803008A0330 /* LaunchAtLoginManager.swift */; };
 		69DFA92B2EAF1CFE008A0330 /* ChatDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69DFA92A2EAF1CFE008A0330 /* ChatDetailView.swift */; };
 		69DFA92D2EAFF361008A0330 /* BotTemplatePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69DFA92C2EAFF361008A0330 /* BotTemplatePicker.swift */; };
+		69DFA92F2EB13AF2008A0330 /* PlainStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69DFA92E2EB13AF2008A0330 /* PlainStorage.swift */; };
+		69DFA9312EB13FAB008A0330 /* ProvidersSettingsLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69DFA9302EB13FAB008A0330 /* ProvidersSettingsLink.swift */; };
 		69F0AA012EA8FACE00AA1001 /* design/SettingsUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F0AA002EA8FACE00AA1001 /* design/SettingsUI.swift */; };
 		69FE10012EAF000100AA0001 /* backend/BackendEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE10002EAF000100AA0001 /* backend/BackendEnvironment.swift */; };
 		69FE10032EAF000100AA0001 /* backend/BackendClientFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE10022EAF000100AA0001 /* backend/BackendClientFactory.swift */; };
@@ -373,7 +374,6 @@
 		69B0AA082D00000100AA0001 /* ProvidersSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProvidersSettingsView.swift; sourceTree = "<group>"; };
 		69B0AA0A2D00000100AA0001 /* ModelsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsSettingsView.swift; sourceTree = "<group>"; };
 		69B0AA0C2D00000100AA0001 /* AdvancedSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedSettingsView.swift; sourceTree = "<group>"; };
-		69B0AA112D0001A000AA0001 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		69B0AA142D0002B000AA0001 /* StandardSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandardSettingsView.swift; sourceTree = "<group>"; };
 		69C0F0012D11111100AA0001 /* NewMainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewMainView.swift; sourceTree = "<group>"; };
 		69C1A0002D11222200AA0001 /* GPTSessionExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPTSessionExtensions.swift; sourceTree = "<group>"; };
@@ -384,6 +384,8 @@
 		69DFA9282EAE8803008A0330 /* LaunchAtLoginManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginManager.swift; sourceTree = "<group>"; };
 		69DFA92A2EAF1CFE008A0330 /* ChatDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatDetailView.swift; sourceTree = "<group>"; };
 		69DFA92C2EAFF361008A0330 /* BotTemplatePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotTemplatePicker.swift; sourceTree = "<group>"; };
+		69DFA92E2EB13AF2008A0330 /* PlainStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlainStorage.swift; sourceTree = "<group>"; };
+		69DFA9302EB13FAB008A0330 /* ProvidersSettingsLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProvidersSettingsLink.swift; sourceTree = "<group>"; };
 		69F0AA002EA8FACE00AA1001 /* design/SettingsUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = design/SettingsUI.swift; sourceTree = "<group>"; };
 		69FE10002EAF000100AA0001 /* backend/BackendEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = backend/BackendEnvironment.swift; sourceTree = "<group>"; };
 		69FE10022EAF000100AA0001 /* backend/BackendClientFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = backend/BackendClientFactory.swift; sourceTree = "<group>"; };
@@ -699,6 +701,7 @@
 		696B6BE229FAE41300845C71 /* utils */ = {
 			isa = PBXGroup;
 			children = (
+				69DFA92E2EB13AF2008A0330 /* PlainStorage.swift */,
 				69A6D4A02CA7E48B0038B745 /* Defaults+Base.swift */,
 				69A6D4A42CA8272F0038B745 /* Base.swift */,
 				696B6BE329FAE42900845C71 /* CommandKeyMonitor.swift */,
@@ -707,7 +710,6 @@
 				696B6CA32A05F45700845C71 /* StringExtensions.swift */,
 				698C5AD92A13D10B007C046A /* Utils.swift */,
 				695C8A2E2A6BCCD000C621E2 /* Constants.swift */,
-				69B0AA112D0001A000AA0001 /* KeychainHelper.swift */,
 			);
 			path = utils;
 			sourceTree = "<group>";
@@ -880,6 +882,7 @@
 				69FE10022EAF000100AA0001 /* backend/BackendClientFactory.swift */,
 				69F0AA002EA8FACE00AA1001 /* design/SettingsUI.swift */,
 				69C1A0B22D13005000AA0001 /* components/GrowingTextView.swift */,
+				69DFA9302EB13FAB008A0330 /* ProvidersSettingsLink.swift */,
 				69FE10A02EAF200100AA0001 /* components/ProviderIconView.swift */,
 				69FE10D02EAF220100AA0001 /* components/ModelPickerPresenter.swift */,
 				69FE10042EAF000100AA0001 /* components/ModelPickerPopover.swift */,
@@ -1269,6 +1272,7 @@
 				696B6B8129E187B000845C71 /* AppInfo.swift in Sources */,
 				696B6BAC29EC160700845C71 /* StartupPasteboardManager.swift in Sources */,
 				696B6BA929EC055C00845C71 /* SelectedText.swift in Sources */,
+				69DFA9312EB13FAB008A0330 /* ProvidersSettingsLink.swift in Sources */,
 				696EEC7C2C690F8E006B27B5 /* Diff.swift in Sources */,
 				696EEC822C690F8E006B27B5 /* GenericPatch.swift in Sources */,
 				696EEC812C690F8E006B27B5 /* ExtendedPatch+Apply.swift in Sources */,
@@ -1315,6 +1319,7 @@
 				696B6BD629F6A33000845C71 /* Persistence.swift in Sources */,
 				694053732C6AF1410015191D /* Prompts.swift in Sources */,
 				695C8A1F2A6A0DA600C621E2 /* MenuBarManager.swift in Sources */,
+				69DFA92F2EB13AF2008A0330 /* PlainStorage.swift in Sources */,
 				696B6C9E2A01E63B00845C71 /* RecordManager.swift in Sources */,
 				696EEC882C690F8E006B27B5 /* Patch+Apply.swift in Sources */,
 				698C5AD62A10AC08007C046A /* TypingInPlace.swift in Sources */,
@@ -1364,7 +1369,6 @@
 				696EEC672C6855CE006B27B5 /* CMDKService.swift in Sources */,
 				696B6B8729E1911300845C71 /* PathManager.swift in Sources */,
 				696B6BE829FAEB9C00845C71 /* KeyUtils.swift in Sources */,
-				69B0AA122D0001A000AA0001 /* KeychainHelper.swift in Sources */,
 				69F0AA012EA8FACE00AA1001 /* design/SettingsUI.swift in Sources */,
 				69C1A0B32D13005000AA0001 /* components/GrowingTextView.swift in Sources */,
 				69C1A0B12D13000100AA0001 /* WindowBridge.swift in Sources */,
@@ -1463,6 +1467,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Found-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Macaify;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1471,7 +1476,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 1.2.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.antiless.macaify.mac;
+				PRODUCT_BUNDLE_IDENTIFIER = com.antiless.macaify.mac.dev1;
 				PRODUCT_NAME = Macaify;
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1496,6 +1501,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Found-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Macaify;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1504,7 +1510,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 1.2.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.antiless.macaify.mac;
+				PRODUCT_BUNDLE_IDENTIFIER = com.antiless.macaify.mac.dev1;
 				PRODUCT_NAME = Macaify;
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;

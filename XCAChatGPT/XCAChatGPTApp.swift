@@ -78,7 +78,7 @@ fileprivate final class ChatSessionViewModel: ObservableObject {
 
     init(conversation: GPTConversation) {
         self.conv = conversation
-        let selectedModel = Defaults[.selectedModelId].isEmpty ? "gpt-4o-mini" : Defaults[.selectedModelId]
+        let selectedModel = Defaults[.selectedModelId].isEmpty ? "macaify-1-mini" : Defaults[.selectedModelId]
         let maxToken = Defaults[.maxToken]
         let apiKey = Defaults[.apiKey]
         self.api = ChatGPTAPI(apiKey: apiKey, model: selectedModel, maxToken: maxToken, systemPrompt: conversation.prompt, temperature: 0.5, baseURL: "", withContext: conversation.withContext)
@@ -192,6 +192,7 @@ struct MainSplitView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
+        .navigationSplitViewColumnWidth(min: 260, ideal: 320, max: 460)
         .onAppear { if let s = store.selected { chatVM.updateConversation(s) } }
         .onChange(of: store.selectedID) { _ in if let s = store.selected { chatVM.updateConversation(s) } }
         .toolbar { toolbar }

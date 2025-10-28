@@ -53,7 +53,7 @@ struct ProviderInstanceRow: View {
                 } else {
                     let hasToken = (ProviderStore.shared.token(for: inst.id) ?? "").isEmpty == false
                     if !hasToken {
-                        GateBadge(text: String(localized: "未配置"), tint: .orange)
+                        GateBadge(text: String(localized: "not_configured"), tint: .orange)
                     }
                 }
             }
@@ -71,4 +71,3 @@ struct ProviderInstanceRow: View {
         }
     }
 }
-

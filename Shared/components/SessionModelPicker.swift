@@ -37,7 +37,7 @@ public struct SessionModelPickerButton: View {
             return provider == "openai" ? name : "\(provider):\(name)"
         }
         // Fallback to global default selection
-        let model = Defaults[.selectedModelId].isEmpty ? (LLMModelsManager.shared.modelCategories.first?.models.first?.id ?? "gpt-4o-mini") : Defaults[.selectedModelId]
+        let model = Defaults[.selectedModelId].isEmpty ? "macaify-1-mini" : Defaults[.selectedModelId]
         let provider = Defaults[.selectedProvider].isEmpty ? "openai" : Defaults[.selectedProvider]
         let name = ModelSelectionManager.shared.modelsByProvider[provider]?.first(where: { $0.slug == model })?.name ?? model
         return provider == "openai" ? name : "\(provider):\(name)"

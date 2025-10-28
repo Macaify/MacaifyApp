@@ -4,7 +4,7 @@ import BetterAuth
 import BetterAuthBrowserOTT
 
 // Represents a concrete, callable model instance supplied by the user.
-// Token is stored in Keychain keyed by `id`.
+// Token is stored in UserDefaults keyed by `id`.
 struct CustomModelInstance: Identifiable, Codable, Equatable {
     var id: String = UUID().uuidString
     var name: String                 // Display name
@@ -33,12 +33,13 @@ final class ProviderStore: ObservableObject {
         }
     }
 
-    // MARK: - Tokens via Keychain
+    // MARK: - Tokens (stored in UserDefaults)
+    private func tokenKey(_ id: String) -> String { "custom.providers.token.\(id)" }
     func setToken(_ token: String, for id: String) {
-        KeychainHelper.standard.set(token: token, account: id)
+        UserDefaults.standard.set(token, forKey: tokenKey(id))
     }
     func token(for id: String) -> String? {
-        KeychainHelper.standard.get(account: id)
+        UserDefaults.standard.string(forKey: tokenKey(id))
     }
 }
 
@@ -277,8 +278,9 @@ struct ProvidersSettingsView: View {
             return inst.name.isEmpty ? inst.modelId : inst.name
         }
         let provider = selectedProvider.isEmpty ? "openai" : selectedProvider
-        let model = selectedModelId.isEmpty ? (LLMModelsManager.shared.modelCategories.first?.models.first?.id ?? "gpt-4o-mini") : selectedModelId
-        let name = ModelSelectionManager.shared.modelsByProvider[provider]?.first(where: { $0.slug == model })?.name ?? model
+        let model = selectedModelId.isEmpty ? "macaify-1-mini" : selectedModelId
+        let name = ModelSelectionManager.shared.modelsByProvider[provider]?.first(where: { $0.slug == model })?.name
+            ?? (model == "macaify-1-mini" ? "Macaify-1 mini" : model)
         return name
     }
 }

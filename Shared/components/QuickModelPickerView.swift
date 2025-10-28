@@ -47,7 +47,7 @@ struct QuickModelPickerView: View {
                         Color.clear.frame(height: 0).id("top")
                     // Section: 自定义
                     if !store.providers.isEmpty {
-                        Text(String(localized: "自定义"))
+                        Text(String(localized: "customize"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 10)

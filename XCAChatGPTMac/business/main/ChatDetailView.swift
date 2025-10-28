@@ -31,6 +31,8 @@ struct ChatDetailView: View {
     // Quick actions palette state
     @State private var showQuickActions: Bool = false
     @State private var actionsMode: QuickActions.Mode = .root
+    // Fallback editor when Settings window cannot be opened
+    @State private var editingProvider: CustomModelInstance? = nil
     // AnchoredPopover demo toggles (moved to InputBar)
     init(viewModel: ChatSessionViewModel, bot: GPTConversation, openBotSettings: @escaping () -> Void = {}, store: BotStore? = nil) {
         self._viewModel = ObservedObject(initialValue: viewModel)
@@ -224,18 +226,8 @@ struct ChatDetailView: View {
                     Image(systemName: "info.circle.fill").foregroundColor(.white)
                     Text(hint).foregroundColor(.white)
                     Spacer()
-            Button("bot_settings") { openBotSettings() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.white)
-                        .foregroundColor(.blue)
-                        .keyboardShortcut(.init("e"), modifiers: .command)
-            Button("open_settings") {
-                        // Choose tab: providers for instance, account for default
-                        let tab = (bot.modelSource == "instance") ? SettingsTab.providers.rawValue : SettingsTab.account.rawValue
-                        UserDefaults.standard.set(tab, forKey: "settings.selectedTab")
-                        if #available(macOS 13.0, *) {
-                            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-                        }
+                    ProvidersSettingsLink {
+                        Text(String(localized: "open_settings"))
                     }
                     .buttonStyle(.bordered)
                     .foregroundColor(.white)
@@ -417,6 +409,18 @@ struct ChatDetailView: View {
                 NotificationCenter.default.post(name: .init("BetterAuthSessionChanged"), object: nil)
             }
             #endif
+        }
+        // Fallback: edit custom instance inline when Settings cannot be opened
+        .sheet(item: $editingProvider) { item in
+            ProviderEditorView(provider: item) { updated in
+                if let idx = ProviderStore.shared.providers.firstIndex(where: { $0.id == updated.id }) {
+                    ProviderStore.shared.providers[idx] = updated
+                } else {
+                    ProviderStore.shared.providers.append(updated)
+                }
+                editingProvider = nil
+            }
+            .frame(width: 460, height: 420)
         }
     }
 
