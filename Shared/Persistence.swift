@@ -135,16 +135,28 @@ struct PersistenceController {
                 let reqS: NSFetchRequest<GPTSession> = GPTSession.fetchRequest()
                 reqS.predicate = NSPredicate(format: "agent == %@", conv)
                 let existing = try ctx.fetch(reqS)
-                var session: GPTSession
-                if let first = existing.first {
-                    session = first
-                } else {
-                    session = GPTSession(title: conv.name.isEmpty ? "新会话" : conv.name, agent: conv, context: ctx)
+
+                // If a session already exists, use it and migrate orphan answers into it.
+                if let session = existing.first {
+                    let reqA: NSFetchRequest<GPTAnswer> = GPTAnswer.fetchRequest()
+                    reqA.predicate = NSPredicate(format: "belongsTo == %@ AND session == nil", conv)
+                    let answers = try ctx.fetch(reqA)
+                    answers.forEach { $0.session = session }
+                    if !answers.isEmpty {
+                        print("[SESSION_USE_EXISTING] id=\(session.objectID) answersMigrated=\(answers.count)")
+                        try ctx.save()
+                    }
+                    return
                 }
-                // Assign session to answers missing it
+
+                // No existing session. Only create a default one if there are orphan answers to migrate.
                 let reqA: NSFetchRequest<GPTAnswer> = GPTAnswer.fetchRequest()
                 reqA.predicate = NSPredicate(format: "belongsTo == %@ AND session == nil", conv)
                 let answers = try ctx.fetch(reqA)
+                guard !answers.isEmpty else { return }
+
+                let session = GPTSession(title: conv.name.isEmpty ? "新会话" : conv.name, agent: conv, context: ctx)
+                print("[SESSION_CREATE] reason=ensureDefault orphanCount=\(answers.count) id=\(session.objectID)")
                 answers.forEach { $0.session = session }
                 try ctx.save()
             } catch {
@@ -167,6 +179,7 @@ struct PersistenceController {
     func createSession(conversation: GPTConversation, title: String = "新会话") -> GPTSession? {
         let viewContext = container.viewContext
         let session = GPTSession(title: title, agent: conversation, context: viewContext)
+        print("[SESSION_CREATE] reason=createSession id=\(session.objectID) title=\(title)")
         do { try viewContext.save(); return session } catch { print(error); return nil }
     }
 

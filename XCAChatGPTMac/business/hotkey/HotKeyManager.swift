@@ -92,7 +92,10 @@ class HotKeyManager {
             } else if isActive {
                 PathManager.shared.toChat(conversation, msg: "")
                 // Notify SwiftUI main split view to focus this bot and inject context
+                let eid = UUID().uuidString
+                print("[QC_POST] id=\(eid) name=QuickChatSelectedText conv=\(conversation.id) len=0")
                 NotificationCenter.default.post(name: .init("QuickChatSelectedText"), object: nil, userInfo: [
+                    "eventId": eid,
                     "convId": conversation.id.uuidString,
                     "text": ""
                 ])
@@ -119,7 +122,10 @@ class HotKeyManager {
                     }
 
                     // Broadcast selection to SwiftUI main split view as well
+                    let eid = UUID().uuidString
+                    print("[QC_POST] id=\(eid) name=QuickChatSelectedText conv=\(conversation.id) len=\(text?.count ?? 0)")
                     NotificationCenter.default.post(name: .init("QuickChatSelectedText"), object: nil, userInfo: [
+                        "eventId": eid,
                         "convId": conversation.id.uuidString,
                         "text": text ?? ""
                     ])
@@ -127,7 +133,10 @@ class HotKeyManager {
                 }
             } else {
                 // No auto text; still open and focus the bot
+                let eid = UUID().uuidString
+                print("[QC_POST] id=\(eid) name=QuickChatSelectedText conv=\(conversation.id) len=0")
                 NotificationCenter.default.post(name: .init("QuickChatSelectedText"), object: nil, userInfo: [
+                    "eventId": eid,
                     "convId": conversation.id.uuidString,
                     "text": ""
                 ])
@@ -154,12 +163,18 @@ class HotKeyManager {
                     resume()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                         if sendDirectly {
+                            let eid = UUID().uuidString
+                            print("[QC_POST] id=\(eid) name=QuickChatSendSelectedText conv=\(conversation.id) len=\(text?.count ?? 0)")
                             NotificationCenter.default.post(name: .init("QuickChatSendSelectedText"), object: nil, userInfo: [
+                                "eventId": eid,
                                 "convId": conversation.id.uuidString,
                                 "text": text ?? ""
                             ])
                         } else {
+                            let eid = UUID().uuidString
+                            print("[QC_POST] id=\(eid) name=QuickChatSelectedText conv=\(conversation.id) len=\(text?.count ?? 0)")
                             NotificationCenter.default.post(name: .init("QuickChatSelectedText"), object: nil, userInfo: [
+                                "eventId": eid,
                                 "convId": conversation.id.uuidString,
                                 "text": text ?? "",
                                 "sourceBundleId": bundleId,

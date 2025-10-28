@@ -17,8 +17,21 @@ import AppKit
 import Combine
 import GPTEncoder
 import MarkdownView
+import MacaifyServiceKit
 
 // MARK: - Store for sidebar bots
+// Global quick-chat event deduper shared across all view hierarchies/windows
+private final class QuickChatEventGate {
+    static let shared = QuickChatEventGate()
+    private var handled: Set<String> = []
+    func checkAndMark(_ id: String) -> Bool {
+        guard !id.isEmpty && id != "N/A" else { return true }
+        if handled.contains(id) { return false }
+        handled.insert(id)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in self?.handled.remove(id) }
+        return true
+    }
+}
 final class BotStore: ObservableObject {
     @Published var bots: [GPTConversation] = []
     @Published var selectedID: UUID? = nil
@@ -89,6 +102,8 @@ final class ChatSessionViewModel: ObservableObject {
     @Published var selectedSessionID: NSManagedObjectID? = nil
     @Published var tokenHint: String = ""
     @Published var pendingNewSession: Bool = false
+    // Correlate quick-chat triggers and dedupe analysis
+    @Published var lastTriggerId: String? = nil
     // Async token count calculation task (for throttling/off-main work)
     private var tokenCalcTask: Task<Void, Never>? = nil
 
@@ -388,8 +403,15 @@ final class ChatSessionViewModel: ObservableObject {
     func send() async {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isSending else { return }
-        // 首次发送时，如果是临时会话则立即实体化，确保会话栏与消息区域状态同步
+        let eid = lastTriggerId ?? "N/A"
+        print("[SEND_BEGIN] id=\(eid) text.len=\(text.count) pendingNew=\(pendingNewSession) selected=\(String(describing: selectedSessionID))")
+        // 首次发送时，如果是临时会话则立即实体化，确保会话栏与消息区域状态同步。
+        // 发送前记录是否为“新建的首条消息”，用于触发自动生成标题。
+        let wasNewSession = pendingNewSession || selectedSessionID == nil
+        // 此处立即创建并捕获目标 session，避免后续异步步骤与 loadHistory 竞争导致写入到错误会话。
         ensureSessionReady()
+        let targetSessionID = selectedSessionID
+        print("[SEND_SESSION] id=\(eid) target=\(String(describing: targetSessionID))")
         input = ""
         isSending = true
         error = nil
@@ -427,6 +449,21 @@ final class ChatSessionViewModel: ObservableObject {
             if let suffix = makeSystemContextSuffix() {
                 api.systemPrompt = originalPrompt + "\n\n" + "<context> is the context this chat session is based on." + "\n" + suffix
             }
+            // If this is the first user message in this session, kick off title generation via backend service kit
+            if wasNewSession {
+                let systemForTitle: String = {
+                    if let suffix = makeSystemContextSuffix() {
+                        return originalPrompt + "\n\n" + "<context> is the context this chat session is based on." + "\n" + suffix
+                    }
+                    return originalPrompt
+                }()
+                let userForTitle = text
+                let sessionForTitle = targetSessionID
+                Task.detached { [weak self] in
+                    guard let self else { return }
+                    await self.generateTitleWithServiceKit(system: systemForTitle, user: userForTitle, sessionID: sessionForTitle)
+                }
+            }
             defer { api.systemPrompt = originalPrompt }
             let stream = try await api.chatsStream(text: text)
             var buffer = ""
@@ -437,7 +474,8 @@ final class ChatSessionViewModel: ObservableObject {
                 if let idx = messages.lastIndex(where: { $0.isStreaming }) { messages[idx].text = buffer }
             }
             if let idx = messages.lastIndex(where: { $0.isStreaming }) { messages[idx].isStreaming = false }
-            persist(user: text, assistant: buffer)
+            print("[SEND_PERSIST] id=\(eid) to=\(String(describing: targetSessionID)) len=\(buffer.count)")
+            persist(user: text, assistant: buffer, to: targetSessionID)
         } catch {
             // Print for debugging visibility
             print("[Chat] stream error:", error)
@@ -463,9 +501,37 @@ final class ChatSessionViewModel: ObservableObject {
             
         }
         isSending = false
+        print("[SEND_END] id=\(eid)")
         if !contextPinned {
             contextSnippet = nil
             persistContextToCurrentSession()
+        }
+    }
+
+    // MARK: - Title generation via MacaifyServiceKit
+    @MainActor private func truncate(_ s: String, to max: Int) -> String { s.count > max ? String(s.prefix(max)) : s }
+    private func generateTitleWithServiceKit(system: String, user: String, sessionID: NSManagedObjectID?) async {
+        // Prepare request payload with light truncation
+        let sys = await MainActor.run { truncate(system.trimmingCharacters(in: .whitespacesAndNewlines), to: 2000) }
+        let usr = await MainActor.run { truncate(user.trimmingCharacters(in: .whitespacesAndNewlines), to: 800) }
+        let msgs = [TitleMessage(role: "system", content: sys), TitleMessage(role: "user", content: usr)]
+        // Fetch bearer if available
+        var auth: String? = nil
+        #if canImport(BetterAuth)
+        auth = await TokenAuth.shared.getAuthorizationHeader()
+        #endif
+        let api = BackendClientFactory.makeTitlesAPI()
+        do {
+            let title = try await api.generateChatTitle(messages: msgs, text: nil, maxLen: 30, authHeader: auth)
+            // Apply to the captured session
+            await MainActor.run {
+                let oid = sessionID ?? selectedSessionID
+                if let oid, let s = try? PersistenceController.shared.container.viewContext.existingObject(with: oid) as? GPTSession {
+                    PersistenceController.shared.rename(session: s, title: title)
+                }
+            }
+        } catch {
+            // Ignore errors silently
         }
     }
 
@@ -473,6 +539,8 @@ final class ChatSessionViewModel: ObservableObject {
     // Show the same ephemeral bubbles in the main UI while typing into other apps.
     @MainActor
     func mirrorStart(user text: String) {
+        let eid = lastTriggerId ?? "N/A"
+        print("[MIRROR_START] id=\(eid) len=\(text.count)")
         // Keep in pending-new-session so ChatDetailView renders ephemeral list instead of persisted rows.
         pendingNewSession = true
         messages.removeAll()
@@ -485,6 +553,8 @@ final class ChatSessionViewModel: ObservableObject {
 
     @MainActor
     func mirrorDelta(_ delta: String) {
+        let eid = lastTriggerId ?? "N/A"
+        print("[MIRROR_DELTA] id=\(eid) len=\(delta.count)")
         guard !delta.isEmpty else { return }
         if let idx = messages.lastIndex(where: { $0.isStreaming && $0.sender == .assistant }) {
             messages[idx].text += delta
@@ -493,18 +563,24 @@ final class ChatSessionViewModel: ObservableObject {
 
     @MainActor
     func mirrorFinish(persistResult: Bool = true) {
+        let eid = lastTriggerId ?? "N/A"
         if let idx = messages.lastIndex(where: { $0.isStreaming && $0.sender == .assistant }) {
             messages[idx].isStreaming = false
             if persistResult {
                 let user = messages.prefix(idx).last(where: { $0.sender == .user })?.text ?? ""
                 let assistant = messages[idx].text
                 if !assistant.isEmpty {
-                    persist(user: user, assistant: assistant)
+                    // Materialize and capture target session to avoid race with selection/history reload
+                    ensureSessionReady()
+                    let target = selectedSessionID
+                    print("[MIRROR_PERSIST] id=\(eid) to=\(String(describing: target)) len=\(assistant.count)")
+                    persist(user: user, assistant: assistant, to: target)
                 }
                 // After persistence, switch to normal session mode next render
                 pendingNewSession = false
             }
         }
+        print("[MIRROR_END] id=\(eid)")
     }
 
     @MainActor
@@ -698,6 +774,7 @@ final class ChatSessionViewModel: ObservableObject {
             created.contextSourceBundleId = (contextSourceBundleId ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             created.updatedAt = Date()
             do { try created.managedObjectContext?.save() } catch { print("save session context error:", error) }
+            print("[SESSION_CREATE] reason=ensureSessionReady id=\(created.objectID)")
             selectedSessionID = created.objectID
             pendingNewSession = false
         }
@@ -790,6 +867,25 @@ final class ChatSessionViewModel: ObservableObject {
         conv.save()
     }
 
+    // 显式持久化到指定的 session（避免异步改选导致写错会话）
+    private func persist(user: String, assistant: String, to sessionID: NSManagedObjectID?) {
+        guard !assistant.isEmpty else { return }
+        let mc = conv.managedObjectContext ?? PersistenceController.shared.container.viewContext
+        let answer = GPTAnswer(role: "user", prompt: user, response: assistant, parentId: conv.own.last?.uuid, context: mc)
+        if let sid = sessionID, let s = try? mc.existingObject(with: sid) as? GPTSession {
+            answer.session = s
+            s.updatedAt = Date()
+        } else if let oid = selectedSessionID, let s = try? mc.existingObject(with: oid) as? GPTSession {
+            // fallback: 当前选中
+            answer.session = s
+            s.updatedAt = Date()
+        }
+        print("[PERSIST] target=\(String(describing: sessionID)) fallback=\(String(describing: selectedSessionID)) len=\(assistant.count)")
+        conv.addAnswer(answer: answer)
+        conv.timestamp = Date()
+        conv.save()
+    }
+
     @MainActor
     func clearHistory() {
         // Prefer clearing only the currently selected session; never wipe the whole conversation
@@ -822,6 +918,7 @@ struct MainSplitView: View {
     @State private var showSettings = false
     @State private var showBotTemplatePicker = false
     @State private var botTemplateResetKey = 0
+    @State private var myWindow: NSWindow? = nil
 
     var body: some View {
         NavigationSplitView {
@@ -840,6 +937,7 @@ struct MainSplitView: View {
         .navigationSplitViewStyle(.balanced)
         // Register the NSWindow that hosts the main chat UI
         .background(HostingWindowFinder { window in
+            myWindow = window
             WindowBridge.shared.mainWindow = window
             WindowBridge.shared.openingMain = false
         })
@@ -849,10 +947,16 @@ struct MainSplitView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .init("QuickChatSelectedText"))) { note in
             guard let info = note.userInfo as? [String: Any] else { return }
+            let eid = (info["eventId"] as? String) ?? "N/A"
+            guard let mine = myWindow, WindowBridge.shared.mainWindow === mine else { print("[QC_SKIP_NOT_MAIN] id=\(eid)"); return }
+            if !QuickChatEventGate.shared.checkAndMark(eid) { print("[QC_DROP_DUP] id=\(eid)"); return }
             let convIdStr = (info["convId"] as? String) ?? ""
             let textRaw = (info["text"] as? String) ?? ""
             let srcApp = (info["sourceAppName"] as? String) ?? ""
             let srcBundle = (info["sourceBundleId"] as? String) ?? ""
+            chatVM.lastTriggerId = eid
+            let vmId = ObjectIdentifier(chatVM).debugDescription
+            print("[QC_RECV] id=\(eid) type=Selected vm=\(vmId) pending=\(chatVM.pendingNewSession) selected=\(String(describing: chatVM.selectedSessionID)) len=\(textRaw.count)")
             if let uuid = UUID(uuidString: convIdStr), let bot = store.bots.first(where: { $0.id == uuid }) {
                 store.selectedID = uuid
                 chatVM.updateConversation(bot)
@@ -869,8 +973,14 @@ struct MainSplitView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .init("QuickChatSendSelectedText"))) { note in
             guard let info = note.userInfo as? [String: Any] else { return }
+            let eid = (info["eventId"] as? String) ?? "N/A"
+            guard let mine = myWindow, WindowBridge.shared.mainWindow === mine else { print("[QC_SKIP_NOT_MAIN] id=\(eid)"); return }
+            if !QuickChatEventGate.shared.checkAndMark(eid) { print("[QC_DROP_DUP] id=\(eid)"); return }
             let convIdStr = (info["convId"] as? String) ?? ""
             let textRaw = (info["text"] as? String) ?? ""
+            chatVM.lastTriggerId = eid
+            let vmId = ObjectIdentifier(chatVM).debugDescription
+            print("[QC_RECV] id=\(eid) type=SendSelected vm=\(vmId) pending=\(chatVM.pendingNewSession) selected=\(String(describing: chatVM.selectedSessionID)) len=\(textRaw.count)")
             if let uuid = UUID(uuidString: convIdStr), let bot = store.bots.first(where: { $0.id == uuid }) {
                 store.selectedID = uuid
                 chatVM.updateConversation(bot)
