@@ -6,8 +6,8 @@ struct MembershipUpgradeSheet: View {
     var requiredPlan: MembershipPlan
     // When presented outside of SwiftUI .sheet (e.g., inside NSPanel), provide a manual close handler.
     var onClose: (() -> Void)? = nil
-    var includedModelsURL: URL? = URL(string: "https://macaify.com/models")
-    var upgradeURL: URL? = URL(string: "https://macaify.com/pricing")
+    var includedModelsURL: URL? = URL(string: "https://macaify.com/#pricing")
+    var upgradeURL: URL? = URL(string: "https://macaify.com/#pricing")
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,7 +27,7 @@ struct MembershipUpgradeSheet: View {
 
             VStack(alignment: .center, spacing: 10) {
                 Text("Advanced AI Models").font(.title3).bold()
-                Text("Access the most powerful models from OpenAI, Perplexity, Anthropic, and more from $8/month.")
+                Text("Access the most powerful models from OpenAI, Perplexity, Anthropic, and more from $4/month.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

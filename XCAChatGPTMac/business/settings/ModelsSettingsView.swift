@@ -103,7 +103,7 @@ struct UpgradeSheet: View {
                 Section(String(localized: "操作")) {
                     HStack {
                         Button(String(localized: "升级")) {
-                            if let url = URL(string: "https://macaify.com/pricing") { NSWorkspace.shared.open(url) }
+                            if let url = URL(string: "https://macaify.com/#pricing") { NSWorkspace.shared.open(url) }
                         }
                         .buttonStyle(.borderedProminent)
                         Button(String(localized: "使用我的模型实例")) {

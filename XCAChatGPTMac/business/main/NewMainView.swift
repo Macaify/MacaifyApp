@@ -190,7 +190,7 @@ final class ChatSessionViewModel: ObservableObject {
         updateConversation(updated)
     }
     private func openPricing() {
-        if let url = URL(string: "https://macaify.com/pricing") { NSWorkspace.shared.open(url) }
+        if let url = URL(string: "https://macaify.com/#pricing") { NSWorkspace.shared.open(url) }
     }
 
     private static func computeHint(for conv: GPTConversation, cfg: APISendConfig) -> String? {

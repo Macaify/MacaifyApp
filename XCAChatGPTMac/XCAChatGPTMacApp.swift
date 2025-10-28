@@ -33,8 +33,8 @@ struct XCAChatGPTMacApp: App {
 //    @AppStorage("selectedLanguage") var userDefaultsSelectedLanguage: String?
     
     @StateObject private var authClient = BetterAuthClient(
-        baseURL: URL(string: "http://localhost:3000")!,
-//        baseURL: URL(string: "https://dash.macaify.com")!,
+        // baseURL: URL(string: "http://localhost:3000")!,
+       baseURL: URL(string: "https://dash.macaify.com")!,
         plugins: [
             // Open auth URL in the default browser and wait for deep link callback
             BrowserOTTPlugin(decideOpen: { url, _ in
