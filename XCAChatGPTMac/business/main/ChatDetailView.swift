@@ -676,6 +676,9 @@ private struct InputBar: View {
     var store: BotStore?
     var openQuickActions: () -> Void
     var openBotSettings: () -> Void
+    #if os(macOS)
+    @EnvironmentObject private var authClient: BetterAuthClient
+    #endif
     @State private var inputHeight: CGFloat = ChatTokens.controlHeight
     // AnchoredPopover test state (scoped to input bar)
     // Removed test toggles for AnchoredPopover demo
@@ -763,6 +766,9 @@ private struct InputBar: View {
                                 viewModel.updateConversation(updated)
                             }
                         )
+                        #if os(macOS)
+                        .environmentObject(authClient)
+                        #endif
                     }
                 )
                 .onChange(of: showSessionPicker) { open in

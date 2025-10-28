@@ -9,6 +9,9 @@ import SwiftUI
 import AppKit
 import KeyboardShortcuts
 import Defaults
+#if os(macOS)
+import BetterAuth
+#endif
 
 struct ConversationPreferenceView: View {
 
@@ -22,6 +25,9 @@ struct ConversationPreferenceView: View {
 
     @State private var isShowingPopover = false
     @State private var icon: Emoji? = nil
+    #if os(macOS)
+    @EnvironmentObject private var authClient: BetterAuthClient
+    #endif
     
 
     init(conversation: GPTConversation, mode: ConversationPreferenceMode) {
@@ -226,6 +232,9 @@ struct ConversationPreferenceView: View {
                                 conversation.modelInstanceId = ""
                             }
                         )
+                        #if os(macOS)
+                        .environmentObject(authClient)
+                        #endif
                     }
                 )
             }

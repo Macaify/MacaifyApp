@@ -86,6 +86,9 @@ struct ProvidersSettingsView: View {
                         AnchoredPopover(isPresented: $showDefaultPicker, preferredDirection: .above) {
                             // 使用 QuickModelPickerView，未注入回调时默认写入全局 Defaults
                             QuickModelPickerView(onDismiss: { showDefaultPicker = false }, resetKey: defaultPickerResetKey)
+                                #if os(macOS)
+                                .environmentObject(authClient)
+                                #endif
                                 .frame(width: 350, height: 600)
                         }
                     )
