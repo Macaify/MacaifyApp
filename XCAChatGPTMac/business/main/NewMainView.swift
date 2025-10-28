@@ -1044,12 +1044,13 @@ struct MainSplitView: View {
 
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
-        // Remove duplicate + and unknown toggle; keep clear & settings only
         ToolbarItemGroup(placement: .automatic) {
-            Button { chatVM.clearHistory() } label: { Label("clear", systemImage: "eraser") }
+            // New session
+            Button { chatVM.startNewSession() } label: { Label(String(localized: "new_session"), systemImage: "plus") }
+                .keyboardShortcut(.init("n"), modifiers: .command)
+            // Settings
+            Button { showSettings = true } label: { Label(String(localized: "bot_settings"), systemImage: "gear") }
                 .disabled(store.selected == nil)
-                .keyboardShortcut(.init("d"), modifiers: .command)
-            Button { showSettings = true } label: { Label("bot_settings", systemImage: "gear") }.disabled(store.selected == nil)
         }
     }
 }

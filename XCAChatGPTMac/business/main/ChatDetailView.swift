@@ -112,6 +112,8 @@ struct ChatDetailView: View {
                                                 .fill(viewModel.isSelected(session: sess) ? Color.accentColor.opacity(0.12) : Color.clear)
                                                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.25)))
                                         )
+                                        .contentShape(.rect)
+                                        .containerShape(.rect)
                                     }
                                     .buttonStyle(.plain)
                                     .onTapGesture(count: 2) {
@@ -144,15 +146,7 @@ struct ChatDetailView: View {
                         }
                         .padding(.horizontal, 12)
                     }
-                    Button {
-                        viewModel.startNewSession()
-                    } label: {
-                        Label("new_session", systemImage: "plus")
-                            .labelStyle(.titleAndIcon)
-                    }
-                    .buttonStyle(.bordered)
-                    .keyboardShortcut(.init("n"), modifiers: .command)
-                    .padding(.trailing, 12)
+                    // Removed visible New Session button (toolbar/shortcut remains available)
                 }
                 .padding(.top, 8)
                 .padding(.bottom, 6)
