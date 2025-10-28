@@ -10,7 +10,7 @@ import AppUpdater
 class AppUpdaterHelper {
     static let shared = AppUpdaterHelper()
     
-    let updater = AppUpdater(owner: "s1ntoneli", repo: "MacaifyApp", releasePrefix: "Macaify", proxy: GithubProxy())
+    let updater = AppUpdater(owner: "Macaify", repo: "MacaifyApp", releasePrefix: "Macaify", proxy: GithubProxy())
     
     func initialize() {
 #if !DEBUG

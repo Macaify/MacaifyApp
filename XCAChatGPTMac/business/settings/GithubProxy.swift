@@ -18,7 +18,7 @@ import Foundation
 import AppUpdater
 
 class GithubProxy: URLRequestProxy {
-    let proxyUrl = "https://github-api-proxy.cleanclip.cc?url="
+    let proxyUrl = "https://github-api-proxy.macaify.com?url="
     
     override func apply(to urlString: String) -> String {
         return "\(proxyUrl)\(urlString)"

@@ -1054,6 +1054,13 @@ struct MainSplitView: View {
                 .disabled(store.selected == nil)
         }
     }
+
+    // MARK: - Sidebar toggle (macOS)
+    private func toggleSidebar() {
+        #if os(macOS)
+        NSApp.sendAction(#selector(NSSplitViewController.toggleSidebar(_:)), to: nil, from: nil)
+        #endif
+    }
 }
 
 // Utility to access the hosting NSWindow for a SwiftUI view hierarchy
