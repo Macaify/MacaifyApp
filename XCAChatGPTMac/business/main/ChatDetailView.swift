@@ -129,9 +129,7 @@ struct ChatDetailView: View {
                                             renamingSessionIndex = idx
                                             renameBuffer = sess.title
                                         }
-                                        Button("generate_title", systemImage: "textformat") {
-                                            Task { await viewModel.generateTitle(for: sess) }
-                                        }
+                                        // Removed: generate title (auto-generation happens on first message)
                                         Divider()
                                         Button("archive", systemImage: "archivebox") {
                                             viewModel.archive(session: sess, archived: true)

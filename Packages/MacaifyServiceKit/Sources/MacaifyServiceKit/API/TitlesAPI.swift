@@ -22,7 +22,12 @@ public final class TitlesAPI {
     ///   - maxLen: Preferred max title length; server default is 30.
     ///   - authHeader: Optional Authorization header (e.g., "Bearer ...").
     /// - Returns: Title string on success.
-    public func generateChatTitle(messages: [TitleMessage]? = nil, text: String? = nil, maxLen: Int = 30, authHeader: String? = nil) async throws -> String {
+    public func generateChatTitle(
+        messages: [TitleMessage]? = nil,
+        text: String? = nil,
+        maxLen: Int = 30,
+        authHeader: String? = nil
+    ) async throws -> String {
         let payload = TitleRequest(messages: messages, text: text, maxLen: maxLen)
         let target = TitlesTarget.generate(baseURL: config.baseURL, payload: payload, authHeader: authHeader)
         let response: Moya.Response = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Moya.Response, Error>) in
@@ -34,13 +39,20 @@ public final class TitlesAPI {
             }
         }
         guard (200...299).contains(response.statusCode) else {
+            let urlStr = response.request?.url?.absoluteString ?? "<unknown>"
+            let bodyStr = String(data: response.data, encoding: .utf8) ?? "<non-utf8>"
+            let snippet = bodyStr.count > 600 ? String(bodyStr.prefix(600)) + "…" : bodyStr
+            print("[TitlesAPI] HTTP \(response.statusCode) url=\(urlStr) body=\(snippet)")
             throw APIError.httpStatus(response.statusCode)
         }
         let decoded = try decoder.decode(TitleResponse.self, from: response.data)
         guard decoded.success, let t = decoded.data?.title, !t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            let raw = String(data: response.data, encoding: .utf8) ?? "<non-utf8>"
+            print("[TitlesAPI] Decode failure body=\(raw)")
             throw APIError.decoding(NSError(domain: "TitlesAPI", code: -1, userInfo: [NSLocalizedDescriptionKey: decoded.error ?? "Invalid title response"]))
         }
         return t
     }
-}
 
+    // Intentionally no cookie handling: auth is expected via Bearer
+}

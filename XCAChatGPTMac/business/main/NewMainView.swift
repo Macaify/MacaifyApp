@@ -531,7 +531,7 @@ final class ChatSessionViewModel: ObservableObject {
                 }
             }
         } catch {
-            // Ignore errors silently
+            print("[TITLE_ERROR] failed to generate: \(error.localizedDescription)")
         }
     }
 
@@ -941,6 +941,7 @@ struct MainSplitView: View {
             WindowBridge.shared.mainWindow = window
             WindowBridge.shared.openingMain = false
         })
+        // No cookie bridge needed; title auth uses Bearer
         // Let ChatDetailView drive conversation updates on appear/change.
         .onChange(of: chatVM.input) { newValue in
             chatVM.updateTokenHint(includingInput: newValue)
