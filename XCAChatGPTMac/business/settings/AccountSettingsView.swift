@@ -3,6 +3,7 @@ import BetterAuth
 import BetterAuthBrowserOTT
 import BetterAuthMembership
 import AppKit
+import AppUpdater
 import Defaults
 
 enum PlanTier: String, Codable, CaseIterable, Identifiable {
@@ -19,6 +20,7 @@ struct AccountSettingsView: View {
     @State private var plan: PlanTier = .free
     @State private var quotaUsed: Double = 0.12 // placeholder
     private let authRedirectURI: String = "macaify://ott"
+    @State private var showUpdateSettings: Bool = false
 
     private var currentPlan: PlanTier {
         if let t = authClient.session.data?.user.membership?.type ?? authClient.session.data?.user.membershipType {
@@ -45,13 +47,35 @@ struct AccountSettingsView: View {
             Section(String(localized: "通用")) {
                 Toggle(String(localized: "开机启动"), isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { LaunchAtLoginManager.set(enabled: $0) }
-                AppUpdaterLink().environmentObject(AppUpdaterHelper.shared.updater)
+                AppShortcuts()
             }
-            Section(String(localized: "快捷键")) { AppShortcuts() }
+            Form {
+                HStack {
+                    Spacer()
+                    if #available(macOS 13.0, *) {
+                        AppUpdaterLink(onOpenSettings: { showUpdateSettings = true })
+                            .environmentObject(AppUpdaterHelper.shared.updater)
+                    } else {
+                        AppUpdaterLink()
+                            .environmentObject(AppUpdaterHelper.shared.updater)
+                    }
+                }
+            }.formStyle(.columns)
         }
         .formStyle(.grouped)
         .onAppear {
             if launchAtLogin != LaunchAtLoginManager.isEnabled { launchAtLogin = LaunchAtLoginManager.isEnabled }
+            // Auto-check updates whenever opening this settings page
+            AppUpdaterHelper.shared.updater.check()
+        }
+        .sheet(isPresented: $showUpdateSettings) {
+            if #available(macOS 13.0, *) {
+                AppUpdateSettings()
+                    .environmentObject(AppUpdaterHelper.shared.updater)
+                    .frame(minWidth: 560, minHeight: 480)
+            } else {
+                EmptyView()
+            }
         }
     }
 

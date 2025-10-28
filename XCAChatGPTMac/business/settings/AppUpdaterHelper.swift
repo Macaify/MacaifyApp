@@ -6,6 +6,7 @@
 //
 
 import AppUpdater
+import Foundation
 
 class AppUpdaterHelper {
     static let shared = AppUpdaterHelper()
@@ -13,6 +14,7 @@ class AppUpdaterHelper {
     let updater = AppUpdater(owner: "Macaify", repo: "MacaifyApp", releasePrefix: "Macaify", proxy: GithubProxy())
     
     func initialize() {
+        updater.allowPrereleases = UserDefaults.standard.bool(forKey: "betaUpdates")
 #if !DEBUG
         updater.check()
 #endif
