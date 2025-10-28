@@ -792,9 +792,21 @@ final class ChatSessionViewModel: ObservableObject {
 
     @MainActor
     func clearHistory() {
-        PersistenceController.shared.clearAnswers(conversation: conv)
+        // Prefer clearing only the currently selected session; never wipe the whole conversation
+        if !pendingNewSession, let sel = selectedSessionID {
+            let ctx = PersistenceController.shared.container.viewContext
+            if let s = try? ctx.existingObject(with: sel) as? GPTSession {
+                PersistenceController.shared.clearAnswers(session: s)
+                messages.removeAll()
+                api.deleteHistoryList()
+                updateTokenHint(includingInput: input)
+                return
+            }
+        }
+        // No concrete session selected; clear only in-memory state
         messages.removeAll()
         api.deleteHistoryList()
+        updateTokenHint(includingInput: input)
     }
 }
 
@@ -924,7 +936,7 @@ struct MainSplitView: View {
     private var toolbar: some ToolbarContent {
         // Remove duplicate + and unknown toggle; keep clear & settings only
         ToolbarItemGroup(placement: .automatic) {
-            Button { chatVM.clearHistory() } label: { Label("clear", systemImage: "trash") }
+            Button { chatVM.clearHistory() } label: { Label("clear", systemImage: "eraser") }
                 .disabled(store.selected == nil)
                 .keyboardShortcut(.init("d"), modifiers: .command)
             Button { showSettings = true } label: { Label("bot_settings", systemImage: "gear") }.disabled(store.selected == nil)

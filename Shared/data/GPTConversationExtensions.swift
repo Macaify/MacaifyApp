@@ -188,12 +188,21 @@ extension GPTConversation {
         KeyboardShortcuts.reset(Name)
         KeyboardShortcuts.reset(NameEdit)
         KeyboardShortcuts.reset(NameChat)
-        let context = managedObjectContext!
-        own.forEach {
-            context.delete($0)
+        let ctx = managedObjectContext!
+        // Delete all answers and sessions explicitly to satisfy Core Data validation
+        do {
+            let reqA: NSFetchRequest<GPTAnswer> = GPTAnswer.fetchRequest()
+            reqA.predicate = NSPredicate(format: "belongsTo == %@", self)
+            if let answers = try? ctx.fetch(reqA) { answers.forEach { ctx.delete($0) } }
+            let reqS: NSFetchRequest<GPTSession> = GPTSession.fetchRequest()
+            reqS.predicate = NSPredicate(format: "agent == %@", self)
+            if let sessions = try? ctx.fetch(reqS) { sessions.forEach { ctx.delete($0) } }
+            ctx.delete(self)
+            try ctx.save()
+        } catch {
+            let nsError = error as NSError
+            print("Conversation delete error: \(nsError), \(nsError.userInfo)")
         }
-        context.delete(self)
-        save()
     }
 
     static var new: GPTConversation {

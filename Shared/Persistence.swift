@@ -98,15 +98,28 @@ struct PersistenceController {
     }
 
     func deleteConversation(conversation: GPTConversation) {
-        let viewContext = conversation.managedObjectContext!
-        viewContext.delete(conversation)
+        let ctx = conversation.managedObjectContext!
+        // To avoid violating the required `belongsTo` relationship on GPTAnswer when
+        // deleting a conversation, explicitly delete all answers and sessions first.
         do {
-            try viewContext.save()
+            // Delete all answers that belong to this conversation
+            let reqA: NSFetchRequest<GPTAnswer> = GPTAnswer.fetchRequest()
+            reqA.predicate = NSPredicate(format: "belongsTo == %@", conversation)
+            if let answers = try? ctx.fetch(reqA) {
+                answers.forEach { ctx.delete($0) }
+            }
+            // Delete all sessions under this conversation (defensive in addition to Cascade rule)
+            let reqS: NSFetchRequest<GPTSession> = GPTSession.fetchRequest()
+            reqS.predicate = NSPredicate(format: "agent == %@", conversation)
+            if let sessions = try? ctx.fetch(reqS) {
+                sessions.forEach { ctx.delete($0) }
+            }
+            // Finally delete the conversation itself
+            ctx.delete(conversation)
+            try ctx.save()
         } catch {
-            // Replace this implementation with code to handle the error appropriately.
-            // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
             let nsError = error as NSError
-            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+            print("deleteConversation error: \(nsError), \(nsError.userInfo)")
         }
     }
 
@@ -296,6 +309,21 @@ struct PersistenceController {
             // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
             let nsError = error as NSError
             print("Unresolved error \(nsError), \(nsError.userInfo)")
+        }
+    }
+
+    // Delete all messages within a specific session only
+    func clearAnswers(session: GPTSession) {
+        guard let ctx = session.managedObjectContext else { return }
+        let req: NSFetchRequest<GPTAnswer> = GPTAnswer.fetchRequest()
+        req.predicate = NSPredicate(format: "session == %@", session)
+        if let answers = try? ctx.fetch(req) {
+            answers.forEach { ctx.delete($0) }
+        }
+        session.updatedAt = Date()
+        do { try ctx.save() } catch {
+            let nsError = error as NSError
+            print("clearAnswers(session) error: \(nsError), \(nsError.userInfo)")
         }
     }
 }

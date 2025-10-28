@@ -158,6 +158,8 @@
 "delete_session" = "Delete Session";
 "confirm_delete_session" = "Delete this session?";
 "delete_session_message" = "Messages will move to the default session after deletion.";
+"confirm_clear_chat" = "Clear this chat?";
+"clear_chat_message" = "This removes all messages in the current session. This cannot be undone.";
 "session_title" = "Session Title";
 "send_message_ellipsis" = "Send message…";
 "stop_generating_shortcut" = "Stop Generating ⌘.";

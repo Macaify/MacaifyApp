@@ -26,6 +26,7 @@ struct ChatDetailView: View {
     @State private var renameBuffer: String = ""
     @State private var pendingDeleteSession: GPTSession? = nil
     @State private var showDeleteConfirm: Bool = false
+    @State private var showClearConfirm: Bool = false
     @State private var contextCollapsed: Bool = true
     // Quick actions palette state
     @State private var showQuickActions: Bool = false
@@ -338,6 +339,12 @@ struct ChatDetailView: View {
         } message: {
             Text("delete_session_message")
         }
+        .alert(String(localized: "confirm_clear_chat"), isPresented: $showClearConfirm) {
+            Button(String(localized: "cancel"), role: .cancel) {}
+            Button(String(localized: "clear"), role: .destructive) { viewModel.clearHistory() }
+        } message: {
+            Text("clear_chat_message")
+        }
         // Hidden shortcut host for common actions, so shortcuts work reliably (even with the palette open)
         .overlay(alignment: .topLeading) {
             Group {
@@ -352,7 +359,7 @@ struct ChatDetailView: View {
                 // Clear: ⌘D (in addition to toolbar binding)
                 Button("") {
                     if showQuickActions { withAnimation(.easeOut(duration: 0.15)) { showQuickActions = false } }
-                    viewModel.clearHistory()
+                    showClearConfirm = true
                 }
                     .keyboardShortcut(.init("d"), modifiers: .command)
                     .opacity(0.001)
@@ -394,7 +401,14 @@ struct ChatDetailView: View {
         // Quick Actions overlay attached at the view root, so遮罩覆盖全窗口
         .overlay {
             if showQuickActions {
-                QuickActions(isPresented: $showQuickActions, mode: actionsMode, viewModel: viewModel, bot: bot, store: store)
+                QuickActions(
+                    isPresented: $showQuickActions,
+                    mode: actionsMode,
+                    viewModel: viewModel,
+                    bot: bot,
+                    store: store,
+                    requestClear: { withAnimation(.easeOut(duration: 0.15)) { showQuickActions = false }; showClearConfirm = true }
+                )
             }
         }
         // 登录状态变化后，自动隐藏错误并刷新模型目录
@@ -797,6 +811,7 @@ private struct QuickActions: View {
     @ObservedObject var viewModel: ChatSessionViewModel
     let bot: GPTConversation
     var store: BotStore?
+    var requestClear: () -> Void = {}
 
     @State private var query: String = ""
     @State private var selection: Int = 0
@@ -826,7 +841,7 @@ private struct QuickActions: View {
         arr.append(Item(title: String(localized: "paste_to_front_app"), systemImage: "rectangle.and.text.magnifyingglass", keyHint: "⌥⇧V", group: .clipboard, action: { viewModel.useLastReply(); dismiss() }))
         arr.append(Item(title: String(localized: "run_with_other_agent"), systemImage: "bolt.horizontal.circle", keyHint: "→", group: .agent, opensSubmenu: .runWithAgent, action: { switchMode(.runWithAgent) }))
         arr.append(Item(title: String(localized: "new_chat_with_other_agent"), systemImage: "arrow.uturn.forward", keyHint: "→", group: .agent, opensSubmenu: .newChatWithAgent, action: { switchMode(.newChatWithAgent) }))
-        arr.append(Item(title: String(localized: "clear_chat"), systemImage: "trash", keyHint: "⌘D", group: .danger, action: { viewModel.clearHistory(); dismiss() }))
+        arr.append(Item(title: String(localized: "clear_chat"), systemImage: "eraser", keyHint: "⌘D", group: .danger, action: { requestClear() }))
         return arr
     }
 
@@ -982,8 +997,7 @@ private struct QuickActions: View {
                         Task { await viewModel.regenerateLast() }
                         dismiss(); return true
                     case .d:
-                        viewModel.clearHistory()
-                        dismiss(); return true
+                        requestClear(); return true
                     case .n:
                         viewModel.startNewSession()
                         dismiss(); return true

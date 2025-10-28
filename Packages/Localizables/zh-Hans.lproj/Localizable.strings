@@ -159,6 +159,8 @@
 "delete_session" = "删除会话";
 "confirm_delete_session" = "确认删除会话？";
 "delete_session_message" = "删除后该会话的消息将移入默认会话。";
+"confirm_clear_chat" = "确认清空会话？";
+"clear_chat_message" = "将删除当前会话中的所有消息，操作不可撤销。";
 "session_title" = "会话标题";
 "send_message_ellipsis" = "发送消息…";
 "stop_generating_shortcut" = "停止生成 ⌘.";
