@@ -1,21 +1,19 @@
-MIT License
+Macaify Usage Notes: Closed‑source allowed, but add attribution
 
-Copyright (c) 2023 Alfian Losari
+Do what you need: you can modify, commercialize, distribute closed‑source builds, and even run it as a SaaS.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Two things to follow:
+- Show this line in a place users can actually see (localize if you want; clickable link is better):
+  Powered by Macaify — https://macaify.com
+  Typical spots: About/Settings/Info page, Help page, store/download page description, or CLI --about/--version output.
+- Keep copyright notices and third‑party licenses/attributions in your distribution.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+No endorsement: this attribution does not mean I endorse or warrant your product.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Trademarks: “Macaify” and related marks belong to me. Beyond the attribution above, using the name/logo for product naming, main marketing visuals, or anything that implies affiliation/endorsement requires prior written permission.
+
+Third‑party components: follow their original licenses.
+
+As‑is: the software is provided “as is”, with no warranties of any kind; I’m not liable for issues to the extent permitted by law.
+
+Need a formal license text? See the MIT text in LICENSE-BASE.
