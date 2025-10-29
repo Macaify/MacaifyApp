@@ -127,7 +127,7 @@ struct XCAChatGPTMacApp: App {
             }
             .buttonStyle(.borderless)
             Button {
-                if let url = URL(string: "https://twitter.com/macaify") {
+                if let url = URL(string: "https://twitter.com/sintoneli") {
                     NSWorkspace.shared.open(url)
                 }
             } label: {
@@ -242,6 +242,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         globalMonitor.updateModifier(appShortcutKey())
         // Using SwiftUI WindowGroup as main window (MainSplitView)
         // Accessibility onboarding is now handled by a first‑run sheet in MainSplitView.
+        // Seed default agents on first launch when database is empty
+        Task {
+            await MainActor.run {
+                let seededKey = "defaultConversationsSeeded.v1"
+                let already = UserDefaults.standard.bool(forKey: seededKey)
+                let hasData = !PersistenceController.shared.loadConversations().isEmpty
+                if !already && !hasData {
+                    let preferred = (Bundle.main.preferredLocalizations.first?.lowercased()
+                                     ?? Locale.preferredLanguages.first?.lowercased()
+                                     ?? "en")
+                    let lang = preferred.hasPrefix("zh") ? "zh" : "en"
+                    initializeIfNeeded(lang)
+                    UserDefaults.standard.set(true, forKey: seededKey)
+                }
+            }
+        }
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         print("applicationShouldTerminateAfterLastWindowClosed")

@@ -1114,7 +1114,7 @@ struct Sidebar: View {
                     Text(bot.icon.isEmpty ? "🤖" : bot.icon)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(bot.name.isEmpty ? String(localized: "untitled") : bot.name)
-                        if !bot.prompt.isEmpty { Text(bot.prompt).lineLimit(1).font(.caption).foregroundStyle(.secondary) }
+//                        if !bot.prompt.isEmpty { Text(bot.prompt).lineLimit(1).font(.caption).foregroundStyle(.secondary) }
                     }
                 }
                 .tag(bot.id as UUID?)

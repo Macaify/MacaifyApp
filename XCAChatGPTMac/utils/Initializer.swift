@@ -20,7 +20,7 @@ func initializeIfNeeded(_ lang: String) {
         addDefaultConvs()
     }
     ConversationViewModel.shared.loadCommands()
-    HotKeyManager.initHotKeys()
+     HotKeyManager.initHotKeys()
 }
 
 private func addDefaultConvsEn() {
@@ -190,13 +190,21 @@ This is the level of depth of the content the student wants to learn. The lowest
 """
 , desc: "", icon:"🎓", shortcut: "", withContext: true, context: PersistenceController.sharedContext)
     
-        registerConversation("Chinese-English Translator", prompt: "You are a Chinese-English translator. Translate the text enclosed in ``` into Chinese or English.\nYour work process consists of three steps: 1. Guess the language of the text I provide. 2. If the language is Chinese, translate it into English. Otherwise, translate it into Chinese. 3. Translate the text into the target language.\n\nResponse format is:\n<Translated text>", desc: "", icon:"🔤", shortcut: "", typingInPlace: true, withContext: false, context: PersistenceController.sharedContext, key: .e, modifiers: [.option])
+        // Shortcut: Option+V for CN-EN translation (replace former Option+E)
+        registerConversation("Chinese-English Translator", prompt: "You are a Chinese-English translator. Translate the text enclosed in ``` into Chinese or English.\nYour work process consists of three steps: 1. Guess the language of the text I provide. 2. If the language is Chinese, translate it into English. Otherwise, translate it into Chinese. 3. Translate the text into the target language.\n\nResponse format is:\n<Translated text>", desc: "", icon:"🔤", shortcut: "", typingInPlace: true, withContext: false, context: PersistenceController.sharedContext, key: .v, modifiers: [.option])
 
-        registerConversation("Chinese-English Translator", prompt: "You are a Chinese-English translator. Translate the text after ``` into Chinese or English.\nYour work process consists of three steps: 1. Guess the language of the text I provide. 2. If the language is Chinese, translate it into English. Otherwise, translate it into Chinese. 3. Translate the text into the target language.\n\nResponse format is:\n<Translated text>\n\nMy text is:\n```", desc: "", icon:"🔤", shortcut: "", autoAddSelectedText: true, withContext: false, context: PersistenceController.sharedContext, key: .t, modifiers: [.option])
 
         registerConversation("Summarize Text", prompt: "Extract the core content from the user's input", desc: "", icon:"✏️", shortcut: "", withContext: false, context: PersistenceController.sharedContext, key: .s, modifiers: [.option])
 
         registerConversation("Ask a question", prompt: "You are a helpful assistant, I will ask you a question and you will answer it", desc: "Simple Q&A", icon: "✨", shortcut: "", withContext: true, context: PersistenceController.sharedContext, key: .q, modifiers: [.option])
+
+        // New: text transforms (Typing In Place)
+        // Option+Z: Make post punchier (concise, engaging; preserve meaning; output rewritten text only)
+        registerConversation("Make post punchier", prompt: "Rewrite the selected text to be more punchy: more concise, higher cadence, and engaging. Avoid hype or over‑marketing, preserve meaning and key facts. Output only the rewritten text.", desc: "Copy boost", icon: "⚡️", shortcut: "", typingInPlace: true, withContext: false, context: PersistenceController.sharedContext, key: .z, modifiers: [.option])
+        // Option+X: Make email polite (professional, friendly tone; keep intention)
+        registerConversation("Polish email (polite)", prompt: "Polish the selected text into a polite, professional, and clear email tone: avoid emotional/imperative phrasing, keep friendly but assertive. Output the revised email only.", desc: "Email polish", icon: "✉️", shortcut: "", typingInPlace: true, withContext: false, context: PersistenceController.sharedContext, key: .x, modifiers: [.option])
+        // Option+C: Structure text (headings + bullet points)
+        registerConversation("Structure text", prompt: "Structure the selected text with clear headings and hierarchical bullet points. Keep information intact and avoid subjective additions. Output only the structured content.", desc: "Structure", icon: "📑", shortcut: "", typingInPlace: true, withContext: false, context: PersistenceController.sharedContext, key: .c, modifiers: [.option])
 }
 
 private func addDefaultConvs() {
@@ -365,13 +373,21 @@ This is the level of depth of the content the student wants to learn. The lowest
 """
 , desc: "", icon:"🎓", shortcut: "", withContext: true, context: PersistenceController.sharedContext)
 
-    registerConversation("中英互译", prompt: "你是个中英互译机器，你把```包裹的文字翻译成中文或英文。\n你的工作过程分三步: 1. 猜测我提供的文字的语言 2. 如果语言是中文，则需要翻译成英文。否则，翻译成中文。3. 把文字翻译成目标语言。\n\n回应格式是：\n<翻译后的文字>", desc: "", icon:"🔤", shortcut: "", typingInPlace: true, withContext: false, context: PersistenceController.sharedContext, key: .e, modifiers: [.option])
+    // 快捷：Option+V 中英互译（原先为 Option+E）
+    registerConversation("中英互译", prompt: "你是个中英互译机器，你把```包裹的文字翻译成中文或英文。\n你的工作过程分三步: 1. 猜测我提供的文字的语言 2. 如果语言是中文，则需要翻译成英文。否则，翻译成中文。3. 把文字翻译成目标语言。\n\n回应格式是：\n<翻译后的文字>", desc: "", icon:"🔤", shortcut: "", typingInPlace: true, withContext: false, context: PersistenceController.sharedContext, key: .v, modifiers: [.option])
 
-    registerConversation("中英互译", prompt: "你是个中英互译机器，你把```后的文字翻译成中文或英文。\n你的工作过程分三步: 1. 猜测我提供的文字的语言 2. 如果语言是中文，则需要翻译成英文。否则，翻译成中文。3. 把文字翻译成目标语言。\n\n回应格式是：\n<翻译后的文字>\n\n我的文字是：\n```", desc: "", icon:"🔤", shortcut: "", autoAddSelectedText: true, withContext: false, context: PersistenceController.sharedContext, key: .t, modifiers: [.option])
 
     registerConversation("总结文字", prompt: "从用户输入的内容中提取核心内容", desc: "", icon:"✏️", shortcut: "", withContext: false, context: PersistenceController.sharedContext, key: .s, modifiers: [.option])
 
     registerConversation("提问", prompt: "You are a helpful assistant, I will ask you a question and you will answer it", desc: "简单提问", icon: "✨", shortcut: "", withContext: true, context: PersistenceController.sharedContext, key: .q, modifiers: [.option])
+
+    // 新增：文本增强与结构化（Typing In Place）
+    // Option+Z：让帖子更有冲击力（更简洁、更有力，保留原意，仅返回改写后的文本）
+    registerConversation("让帖子更有冲击力", prompt: "请将我选中的文字改写为更有冲击力的版本：更精炼、更有节奏、可读性更强，避免夸张与过度营销，完整保留原意与关键信息。只输出改写后的正文。", desc: "文案增强", icon: "⚡️", shortcut: "", typingInPlace: true, withContext: false, context: PersistenceController.sharedContext, key: .z, modifiers: [.option])
+    // Option+X：礼貌邮件润色（保持事实与意图不变，语气礼貌、专业）
+    registerConversation("礼貌邮件润色", prompt: "请将我选中的文字润色为礼貌、专业且清晰的邮件用语：避免情绪化与命令式表达，语气友好但明确，逻辑更清楚。只输出润色后的正文。", desc: "邮件润色", icon: "✉️", shortcut: "", typingInPlace: true, withContext: false, context: PersistenceController.sharedContext, key: .x, modifiers: [.option])
+    // Option+C：结构化文字（分层次输出标题、小点、要点清单）
+    registerConversation("结构化文字", prompt: "请将我选中的文字结构化整理：给出清晰的小标题与层级要点，必要时用编号或项目符号。保持信息完整，不添加主观观点。只输出整理后的内容。", desc: "结构化", icon: "📑", shortcut: "", typingInPlace: true, withContext: false, context: PersistenceController.sharedContext, key: .c, modifiers: [.option])
 }
 
 func registerConversation(_ name: String, prompt: String, desc: String, icon: String, shortcut: String, typingInPlace: Bool = false, autoAddSelectedText: Bool = false, withContext: Bool, context: NSManagedObjectContext, key: KeyboardShortcuts.Key? = nil, modifiers: NSEvent.ModifierFlags = []) {
