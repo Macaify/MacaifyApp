@@ -135,6 +135,7 @@
 		69A6D4A12CA7E4920038B745 /* Defaults+Base.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69A6D4A02CA7E48B0038B745 /* Defaults+Base.swift */; };
 		69A6D4A32CA7F2AC0038B745 /* providers.xml in Resources */ = {isa = PBXBuildFile; fileRef = 69A6D4A22CA7F2A70038B745 /* providers.xml */; };
 		69A6D4A52CA8272F0038B745 /* Base.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69A6D4A42CA8272F0038B745 /* Base.swift */; };
+		69ACC0012EAFEEAA00AAA001 /* (null) in Sources */ = {isa = PBXBuildFile; };
 		69B0AA012D00000100AA0001 /* SettingsTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA002D00000100AA0001 /* SettingsTabs.swift */; };
 		69B0AA032D00000100AA0001 /* AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA022D00000100AA0001 /* AccountSettingsView.swift */; };
 		69B0AA052D00000100AA0001 /* SettingsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0AA042D00000100AA0001 /* SettingsCard.swift */; };
@@ -158,6 +159,8 @@
 		69DFA92D2EAFF361008A0330 /* BotTemplatePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69DFA92C2EAFF361008A0330 /* BotTemplatePicker.swift */; };
 		69DFA92F2EB13AF2008A0330 /* PlainStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69DFA92E2EB13AF2008A0330 /* PlainStorage.swift */; };
 		69DFA9312EB13FAB008A0330 /* ProvidersSettingsLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69DFA9302EB13FAB008A0330 /* ProvidersSettingsLink.swift */; };
+		69DFA9332EB1CB0D008A0330 /* accessibility_guide.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 69DFA9322EB1CB0D008A0330 /* accessibility_guide.mp4 */; };
+		69DFA9352EB1CB81008A0330 /* AccessibilityOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69DFA9342EB1CB81008A0330 /* AccessibilityOnboardingView.swift */; };
 		69F0AA012EA8FACE00AA1001 /* design/SettingsUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F0AA002EA8FACE00AA1001 /* design/SettingsUI.swift */; };
 		69FE10012EAF000100AA0001 /* backend/BackendEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE10002EAF000100AA0001 /* backend/BackendEnvironment.swift */; };
 		69FE10032EAF000100AA0001 /* backend/BackendClientFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE10022EAF000100AA0001 /* backend/BackendClientFactory.swift */; };
@@ -386,6 +389,8 @@
 		69DFA92C2EAFF361008A0330 /* BotTemplatePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotTemplatePicker.swift; sourceTree = "<group>"; };
 		69DFA92E2EB13AF2008A0330 /* PlainStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlainStorage.swift; sourceTree = "<group>"; };
 		69DFA9302EB13FAB008A0330 /* ProvidersSettingsLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProvidersSettingsLink.swift; sourceTree = "<group>"; };
+		69DFA9322EB1CB0D008A0330 /* accessibility_guide.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = accessibility_guide.mp4; sourceTree = "<group>"; };
+		69DFA9342EB1CB81008A0330 /* AccessibilityOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityOnboardingView.swift; sourceTree = "<group>"; };
 		69F0AA002EA8FACE00AA1001 /* design/SettingsUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = design/SettingsUI.swift; sourceTree = "<group>"; };
 		69FE10002EAF000100AA0001 /* backend/BackendEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = backend/BackendEnvironment.swift; sourceTree = "<group>"; };
 		69FE10022EAF000100AA0001 /* backend/BackendClientFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = backend/BackendClientFactory.swift; sourceTree = "<group>"; };
@@ -578,6 +583,7 @@
 				696B6B8C29E1D96000845C71 /* chat */,
 				696B6B7529E178C700845C71 /* main */,
 				696B6B6D29E16F8500845C71 /* hotkey */,
+				69ACC0102EAFEEFF00AAA001 /* onboarding */,
 			);
 			path = business;
 			sourceTree = "<group>";
@@ -807,8 +813,17 @@
 			children = (
 				69A6D4A22CA7F2A70038B745 /* providers.xml */,
 				69A6D49C2CA7C5390038B745 /* models.xml */,
+				69DFA9322EB1CB0D008A0330 /* accessibility_guide.mp4 */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		69ACC0102EAFEEFF00AAA001 /* onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				69DFA9342EB1CB81008A0330 /* AccessibilityOnboardingView.swift */,
+			);
+			path = onboarding;
 			sourceTree = "<group>";
 		};
 		8B057583298E52C000A56C9A /* XCAChatGPTMac */ = {
@@ -1177,6 +1192,7 @@
 				8B05758C298E52C000A56C9A /* Preview Assets.xcassets in Resources */,
 				69A6D49D2CA7C5410038B745 /* models.xml in Resources */,
 				69A6D4A32CA7F2AC0038B745 /* providers.xml in Resources */,
+				69DFA9332EB1CB0D008A0330 /* accessibility_guide.mp4 in Resources */,
 				8B057589298E52C000A56C9A /* Assets.xcassets in Resources */,
 				696B6BFF29FB9AB200845C71 /* emoji_metadata.json in Resources */,
 				698C5AE32A166ECB007C046A /* prompts.json in Resources */,
@@ -1243,6 +1259,7 @@
 				69FE10332EAF1B0A00AA0001 /* components/SessionModelPicker.swift in Sources */,
 				69C1A0012D11222200AA0001 /* GPTSessionExtensions.swift in Sources */,
 				69C0F0022D11111100AA0001 /* NewMainView.swift in Sources */,
+				69ACC0012EAFEEAA00AAA001 /* (null) in Sources */,
 				698C5AEA2A16ABA3007C046A /* KeyMonitorManager.swift in Sources */,
 				696B6B6F29E16FA100845C71 /* HotKeyManager.swift in Sources */,
 				696B6BF629FB969100845C71 /* EmojiData.swift in Sources */,
@@ -1342,6 +1359,7 @@
 				696EEC872C690F8E006B27B5 /* Patch.swift in Sources */,
 				694D07592CABA1D00091156D /* SelectedEffect.swift in Sources */,
 				694D075A2CABA1D00091156D /* HoveredEffect.swift in Sources */,
+				69DFA9352EB1CB81008A0330 /* AccessibilityOnboardingView.swift in Sources */,
 				8B057595298E52D900A56C9A /* MessageRowView.swift in Sources */,
 				696B6C0329FBA7F300845C71 /* EmojiPickerPopoverView.swift in Sources */,
 				694D075F2CABA1E40091156D /* Environments.swift in Sources */,

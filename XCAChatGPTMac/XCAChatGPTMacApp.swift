@@ -241,7 +241,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         globalMonitor.start()
         globalMonitor.updateModifier(appShortcutKey())
         // Using SwiftUI WindowGroup as main window (MainSplitView)
-        _ = hasAccessibilityPermission(prompt: true)
+        // Accessibility onboarding is now handled by a first‑run sheet in MainSplitView.
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         print("applicationShouldTerminateAfterLastWindowClosed")

@@ -919,6 +919,7 @@ struct MainSplitView: View {
     @State private var showBotTemplatePicker = false
     @State private var botTemplateResetKey = 0
     @State private var myWindow: NSWindow? = nil
+    @State private var showAccessibilityOnboarding = false
 
     var body: some View {
         NavigationSplitView {
@@ -946,6 +947,20 @@ struct MainSplitView: View {
         // Let ChatDetailView drive conversation updates on appear/change.
         .onChange(of: chatVM.input) { newValue in
             chatVM.updateTokenHint(includingInput: newValue)
+        }
+        .onAppear {
+            // Show onboarding on first launch if Accessibility not granted
+            let key = "onboarding.accessibility.shown"
+            let firstShown = UserDefaults.standard.bool(forKey: key)
+            if !firstShown && !hasAccessibilityPermission() {
+                showAccessibilityOnboarding = true
+            }
+        }
+        .sheet(isPresented: $showAccessibilityOnboarding) {
+            AccessibilityOnboardingView {
+                UserDefaults.standard.set(true, forKey: "onboarding.accessibility.shown")
+                showAccessibilityOnboarding = false
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .init("QuickChatSelectedText"))) { note in
             guard let info = note.userInfo as? [String: Any] else { return }

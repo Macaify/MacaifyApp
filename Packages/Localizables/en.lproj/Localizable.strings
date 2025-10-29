@@ -198,6 +198,17 @@
 "regenerate_response" = "Regenerate response";
 "hover_for_details" = "Hover for details";
 "search_ellipsis" = "Search...";
+
+// Accessibility onboarding
+"ax_onboarding_title" = "Make quick actions effortless";
+"ax_onboarding_body" = "We require Accessibility permission to read selected text and automate paste locally. Your data stays on this Mac.";
+"ax_open_system_settings" = "Open System Settings";
+"ax_get_started" = "Get Started";
+"ax_after_grant_hint" = "Return to this window after granting to continue.";
+"ax_drag_hint_title" = "Or drag the app icon above into the Accessibility list to grant access";
+"ax_path_hint" = "Path: System Settings > Privacy & Security > Accessibility";
+"ax_video_title" = "Enable Accessibility Permission";
+"ax_video_subtitle" = "Takes about 15 seconds";
 "model" = "Model";
 "model_provider" = "Model Provider";
 "new_session" = "New Session";

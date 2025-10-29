@@ -198,6 +198,17 @@
 "test_failed_prefix" = "❌ 失败：";
 "regenerate_response" = "重新生成";
 "hover_for_details" = "悬停以查看详情";
+
+// 辅助功能首启引导
+"ax_onboarding_title" = "让快捷操作更顺手";
+"ax_onboarding_body" = "我们需要系统“辅助功能”权限，用于读取选中文字、自动粘贴等本地操作。数据仅在本机处理。";
+"ax_open_system_settings" = "打开系统设置";
+"ax_get_started" = "开始使用";
+"ax_after_grant_hint" = "完成授权后返回此窗口即可继续";
+"ax_drag_hint_title" = "也可以将上方图标拖入“辅助功能”列表进行授权";
+"ax_path_hint" = "路径：系统设置 > 隐私与安全 > 辅助功能";
+"ax_video_title" = "开启辅助功能权限";
+"ax_video_subtitle" = "约 15 秒完成设置";
 "search_ellipsis" = "搜索...";
 "model" = "模型";
 "model_provider" = "模型接口";
