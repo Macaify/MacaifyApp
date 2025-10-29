@@ -13,6 +13,12 @@
   <img src="https://img.shields.io/badge/License-Attribution%20Required-blue" alt="Attribution Required" />
 </p>
 
+<p align="center">
+  <b>English</b> |
+  <a href="README.zh.md">简体中文</a>
+  
+</p>
+
 ## Quick demo
 - In‑Context flow: Select → Shortcut → Done
 

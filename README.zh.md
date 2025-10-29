@@ -13,6 +13,12 @@
   <img src="https://img.shields.io/badge/License-需署名-blue" alt="需署名" />
 </p>
 
+<p align="center">
+  <a href="README.md">English</a> |
+  <b>简体中文</b>
+  
+</p>
+
 ## 快速演示
 - In‑Context 流程：选中 → 快捷键 → 完成
 
