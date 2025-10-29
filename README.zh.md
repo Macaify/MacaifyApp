@@ -1,6 +1,22 @@
-# Macaify – 在任何应用里用 AI，不再 ⌘‑Tab
-> 
-> Select → Shortcut → Done. 不切换应用，不打断思路。
+<div align="center">
+  <img width="150" height="150" src="docs/Assets/AppIcon.webp" alt="Macaify 图标" />
+  <h1><b>Macaify</b></h1>
+  <p>
+    在任何应用里用 AI，不再 ⌘‑Tab。<br/>
+    <a href="https://macaify.com"><strong>macaify.com »</strong></a>
+  </p>
+</div>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/SwiftUI-Native-orange?logo=swift" alt="SwiftUI Native" />
+  <img src="https://img.shields.io/badge/macOS-12%2B-black?logo=apple" alt="macOS 12+" />
+  <img src="https://img.shields.io/badge/License-需署名-blue" alt="需署名" />
+</p>
+
+## 快速演示
+- In‑Context 流程：选中 → 快捷键 → 完成
+
+<img src="docs/Assets/Snapshot.gif" alt="Macaify 快速演示 GIF" />
 
 Macaify 是一款专注「不打断专注流」的 Mac 原生 AI 应用：在任何 App 里选中文本，按下快捷键即可完成翻译、润色、改写、总结等操作；也支持完整的聊天模式与多模型切换。应用开源免费，可自带模型（无需配置）或使用你自己的 API Key（BYOK）。
 
@@ -36,9 +52,6 @@ Macaify 是一款专注「不打断专注流」的 Mac 原生 AI 应用：在任
 
 
 ## 截图预览
-- 无障碍权限引导（视频，可在 GitHub 直接播放）：
-  - docs/Assets/accessibility_guide.mp4
-  
 > 更多界面截图可在官网或发布页查看，也欢迎 PR 补充最新截图。
 
 
@@ -149,4 +162,3 @@ Macaify 是一款专注「不打断专注流」的 Mac 原生 AI 应用：在任
 
 ——
 如果这个项目对你有帮助，欢迎点亮 Star；也欢迎通过官网体验稳定发布版本并支持 Pro 订阅，用于覆盖模型调用与开发维护成本。谢谢！
-

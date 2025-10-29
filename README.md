@@ -1,6 +1,22 @@
-# Macaify — AI in any Mac app, no ⌘‑Tab
-> 
-> Select → Shortcut → Done. No app switching, no interruption.
+<div align="center">
+  <img width="150" height="150" src="docs/Assets/AppIcon.webp" alt="Macaify Icon" />
+  <h1><b>Macaify</b></h1>
+  <p>
+    AI in any Mac app — no ⌘‑Tab.<br/>
+    <a href="https://macaify.com"><strong>macaify.com »</strong></a>
+  </p>
+</div>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/SwiftUI-Native-orange?logo=swift" alt="SwiftUI Native" />
+  <img src="https://img.shields.io/badge/macOS-12%2B-black?logo=apple" alt="macOS 12+" />
+  <img src="https://img.shields.io/badge/License-Attribution%20Required-blue" alt="Attribution Required" />
+</p>
+
+## Quick demo
+- In‑Context flow: Select → Shortcut → Done
+
+<img src="docs/Assets/Snapshot.gif" alt="Macaify quick demo GIF" />
 
 Macaify is a native macOS AI app focused on preserving your flow: select text in any app, hit a shortcut, and get translation, rewrite, polishing, or summarization done in place. It also provides full chat mode and quick model switching. Use built‑in account models or your own API key (BYOK).
 
@@ -36,8 +52,7 @@ That’s why we built In‑Context: Select → Shortcut → Done. No switching, 
 
 
 ## Preview
-- Accessibility permission walkthrough (video, playable on GitHub):
-  - docs/Assets/accessibility_guide.mp4
+> More UI shots are available on the website and release pages. PRs with fresh screenshots are welcome.
 
 
 ## Install
