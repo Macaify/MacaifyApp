@@ -11,6 +11,7 @@
   <img src="https://img.shields.io/badge/SwiftUI-Native-orange?logo=swift" alt="SwiftUI Native" />
   <img src="https://img.shields.io/badge/macOS-12%2B-black?logo=apple" alt="macOS 12+" />
   <img src="https://img.shields.io/badge/License-需署名-blue" alt="需署名" />
+  <img src="https://img.shields.io/badge/AI-免费%20%E2%80%A2%20不限额-brightgreen?logo=sparkles" alt="AI 免费 · 不限额" />
 </p>
 
 <p align="center">
