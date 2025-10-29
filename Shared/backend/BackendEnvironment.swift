@@ -12,7 +12,7 @@ public enum BackendEnvironment {
 #if DEBUG
         return URL(string: "http://localhost:3000")!
 #else
-        return URL(string: "https://dash.macaify.com")!
+        return URL(string: "https://macaify.com")!
 #endif
     }
 }

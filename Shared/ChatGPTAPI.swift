@@ -30,7 +30,7 @@ class ChatGPTAPI: @unchecked Sendable {
     
     private var PORTKEY_BASE_URL = "https://aigateway.macaify.com"
     // 对于账户网关与 OpenAI 官方，默认包含 "/v1"，以便路径统一改为 "/chat/completions"
-    private let ACCOUNT_GATEWAY_BASE_URL = "https://dash.macaify.com/api/ai/v1"
+    private let ACCOUNT_GATEWAY_BASE_URL = "https://macaify.com/api/ai/v1"
 
     private var baseURL: String
     private var useAccountGateway: Bool
