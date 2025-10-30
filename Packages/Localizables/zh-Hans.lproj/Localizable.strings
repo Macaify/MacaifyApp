@@ -82,7 +82,7 @@
 "new_chat_cmd_n"="新聊天 ⌘N";
 "delete_record_cmd_d"="删除记录 ⌘D";
 "delete_chat_history_cmd_d"="删除聊天记录 ⌘D";
-"send_enter"="发送 ↩";
+"send_enter"="发送 ⌘↩";
 "stop_generating"="停止生成";
 "api_key"="API密钥";
 "language_settings"="语言设置";
@@ -164,10 +164,10 @@
 "session_title" = "会话标题";
 "send_message_ellipsis" = "发送消息…";
 "stop_generating_shortcut" = "停止生成 ⌘.";
-"send_and_newline_help" = "发送 ↩ / ⌘↩，换行 ⇧↩";
+"send_and_newline_help" = "发送 ⌘↩ · 换行 ↩ / ⇧↩";
 "actions_cmdk" = "操作 ⌘K";
 "open_actions_cmdk" = "打开动作 ⌘K";
-"keyboard_hint_full" = "发送 ↩ / ⌘↩ · 换行 ⇧↩ · 动作 ⌘K";
+"keyboard_hint_full" = "发送 ⌘↩ · 换行 ↩/⇧↩ · 动作 ⌘K";
 "no_actions" = "无可用动作";
 "copy_as_markdown" = "复制为 Markdown";
 "set_as_system_prompt_and_regenerate" = "设为 System Prompt 并重新生成";

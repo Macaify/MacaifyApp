@@ -25,6 +25,8 @@ class ChatGPTAPI: @unchecked Sendable {
     
     private let apiKey: String
     private var historyList = [Message]()
+    // Cached token count for history to avoid recomputing on every input keystroke
+    private var historyTokenCount: Int = 0
     // 携带上下文
     var withContext: Bool
     
@@ -200,6 +202,10 @@ class ChatGPTAPI: @unchecked Sendable {
         set(newValue) {
             historyList.removeAll()
             historyList.append(contentsOf: newValue)
+            // Recompute cached token count when history is replaced wholesale
+            historyTokenCount = newValue.reduce(0) { partial, msg in
+                partial + gptEncoder.encode(text: msg.content).count
+            }
         }
     }
     
@@ -249,7 +255,13 @@ class ChatGPTAPI: @unchecked Sendable {
     private func appendToHistoryList(userText: String, responseText: String) {
         self.historyList.append(.init(role: "user", content: userText))
         self.historyList.append(.init(role: "assistant", content: responseText))
+        // Incrementally update cached token count
+        historyTokenCount += gptEncoder.encode(text: userText).count
+        historyTokenCount += gptEncoder.encode(text: responseText).count
     }
+
+    // Expose cached history token count for UI token hints
+    var cachedHistoryTokenCount: Int { historyTokenCount }
     
     func chatsStream(text: String) async throws -> AsyncThrowingStream<ChatStreamResult, Error> {
         // Build request
@@ -495,6 +507,7 @@ class ChatGPTAPI: @unchecked Sendable {
     
     func deleteHistoryList() {
         self.historyList.removeAll()
+        self.historyTokenCount = 0
     }
     
     func interupt() {

@@ -18,6 +18,8 @@ struct ContentView: View {
     // Simplify input sizing to reduce layout cost
     @State var resetHovered: Bool = false
     @State var newHovered: Bool = false
+    // Keep input local to avoid publishing each keystroke to vm
+    @State private var localInput: String = ""
 
     var body: some View {
         ZStack {
@@ -122,12 +124,14 @@ struct ContentView: View {
             .onHover { hover in
                 newHovered = hover
             }
-            InputEditor(placeholder: String(localized: "tap_to_chat"), text: $vm.inputMessage, onShiftEnter: {
+            InputEditor(placeholder: String(localized: "tap_to_chat"), text: $localInput, onShiftEnter: {
                 Task { @MainActor in
-                    if !vm.inputMessage.isEmpty {
+                    if !localInput.isEmpty {
                         scrolledByUser = false
                         scrollToBottom(proxy: proxy)
+                        vm.inputMessage = localInput
                         await vm.sendTapped()
+                        localInput = ""
                     }
                 }
             })
@@ -139,6 +143,7 @@ struct ContentView: View {
                 .disabled(vm.isInteractingWithChatGPT)
                 .task {
                     isTextFieldFocused = true
+                    localInput = vm.inputMessage
                 }
 
             if vm.isInteractingWithChatGPT {
@@ -151,17 +156,20 @@ struct ContentView: View {
                 }
             } else {
                 HStack {
-                    PlainButton(label: "send_enter", backgroundColor: .purple, foregroundColor: .white, shortcut: .return, autoShowShortcutHelp: false, action: {
+                    // Only send on Command+Enter to avoid conflicting with IME Enter
+                    PlainButton(label: "send_enter", backgroundColor: .purple, foregroundColor: .white, shortcut: .return, modifiers: .command, autoShowShortcutHelp: false, action: {
                         Task { @MainActor in
-                            if !vm.inputMessage.isEmpty {
+                            if !localInput.isEmpty {
                                 scrolledByUser = false
                                 scrollToBottom(proxy: proxy)
+                                vm.inputMessage = localInput
                                 await vm.sendTapped()
+                                localInput = ""
                             }
                         }
                     })
-                    .disabled(vm.inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .opacity(vm.inputMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+                    .disabled(localInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .opacity(localInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
 
                     PlainButton(label: "use_response_cmd_enter", shortcut: .return, modifiers: .command, autoShowShortcutHelp: false) {
                         print("mini")

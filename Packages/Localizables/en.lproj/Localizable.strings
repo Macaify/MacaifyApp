@@ -81,7 +81,7 @@
 "new_chat_cmd_n" = "New chat ⌘N";
 "delete_record_cmd_d" = "Delete record ⌘D";
 "delete_chat_history_cmd_d" = "Delete chat history";
-"send_enter" = "Send ↩";
+"send_enter" = "Send ⌘↩";
 "stop_generating" = "Stop generating";
 "api_key" = "API key";
 "language_settings" = "Language";
@@ -163,10 +163,10 @@
 "session_title" = "Session Title";
 "send_message_ellipsis" = "Send message…";
 "stop_generating_shortcut" = "Stop Generating ⌘.";
-"send_and_newline_help" = "Send ↩ / ⌘↩, newline ⇧↩";
+"send_and_newline_help" = "Send ⌘↩ · Newline ↩ / ⇧↩";
 "actions_cmdk" = "Actions ⌘K";
 "open_actions_cmdk" = "Open Actions ⌘K";
-"keyboard_hint_full" = "Send ↩ / ⌘↩ · Newline ⇧↩ · Actions ⌘K";
+"keyboard_hint_full" = "Send ⌘↩ · Newline ↩/⇧↩ · Actions ⌘K";
 "no_actions" = "No actions";
 "copy_as_markdown" = "Copy as Markdown";
 "set_as_system_prompt_and_regenerate" = "Set as System Prompt and Regenerate";

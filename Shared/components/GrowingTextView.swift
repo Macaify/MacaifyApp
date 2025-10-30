@@ -113,10 +113,9 @@ struct GrowingTextView: NSViewRepresentable {
         let oneLine = ceil(lineHeight(for: textView.font ?? font) + insets.height * 2)
         let clamped = max(minHeight, min(maxHeight, max(oneLine, rawHeight)))
         if measuredHeight != clamped {
+            // Avoid per-keystroke animations which can cause input lag
             DispatchQueue.main.async {
-                withAnimation(.easeInOut(duration: 0.16)) {
-                    self.measuredHeight = clamped
-                }
+                self.measuredHeight = clamped
             }
         }
         scroll.hasVerticalScroller = clamped >= maxHeight - 0.5
@@ -149,6 +148,11 @@ private final class CustomGrowingTextView: NSTextView {
         let isK = event.keyCode == 40
         let mods = event.modifierFlags.intersection([.command, .shift, .option, .control])
         if isEnter {
+            // Respect IME composition: if has marked text, never treat Enter as send
+            if self.hasMarkedText() {
+                super.keyDown(with: event)
+                return
+            }
             if mods.contains(.command) {
                 onCommandEnter?()
                 return
@@ -158,7 +162,12 @@ private final class CustomGrowingTextView: NSTextView {
                 onShiftEnter?()
                 return
             } else {
-                onEnter?()
+                // Plain Enter: if no explicit handler, default to insert newline
+                if let onEnter {
+                    onEnter()
+                } else {
+                    super.keyDown(with: event)
+                }
                 return
             }
         } else if isK && mods.contains(.command) {

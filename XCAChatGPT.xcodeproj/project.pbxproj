@@ -32,6 +32,7 @@
 		694D075C2CABA1D00091156D /* HoveredEffect.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694D07572CABA1D00091156D /* HoveredEffect.swift */; };
 		694D075E2CABA1E40091156D /* Environments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694D075D2CABA1E40091156D /* Environments.swift */; };
 		694D075F2CABA1E40091156D /* Environments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694D075D2CABA1E40091156D /* Environments.swift */; };
+		69FE12012EAF400000AA0001 /* components/UnboundComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE12002EAF400000AA0001 /* components/UnboundComposer.swift */; };
 		695C8A1F2A6A0DA600C621E2 /* MenuBarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 695C8A1D2A6A0CFE00C621E2 /* MenuBarManager.swift */; };
 		695C8A2B2A6B892F00C621E2 /* MSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 695C8A2A2A6B892F00C621E2 /* MSection.swift */; };
 		695C8A2F2A6BCCD000C621E2 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 695C8A2E2A6BCCD000C621E2 /* Constants.swift */; };
@@ -444,6 +445,7 @@
 		8B91C015298ADC9D0079AF26 /* MessageRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageRow.swift; sourceTree = "<group>"; };
 		8B91C017298ADF4E0079AF26 /* DotLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotLoadingView.swift; sourceTree = "<group>"; };
 		8B91C019298ADF7F0079AF26 /* MessageRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageRowView.swift; sourceTree = "<group>"; };
+		69FE12002EAF400000AA0001 /* components/UnboundComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = components/UnboundComposer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -908,6 +910,7 @@
 				69FE11F02EAF330100AA0001 /* components/AnchoredPopover.swift */,
 				69FE11F22EAF33B800AA0001 /* components/ProviderListView.swift */,
 				69FE11F42EAF34C000AA0001 /* components/QuickModelPickerView.swift */,
+				69FE12002EAF400000AA0001 /* components/UnboundComposer.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -1253,6 +1256,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				69FE12012EAF400000AA0001 /* components/UnboundComposer.swift in Sources */,
 				69FE11F12EAF330100AA0001 /* components/AnchoredPopover.swift in Sources */,
 				69FE11F32EAF33B800AA0001 /* components/ProviderListView.swift in Sources */,
 				69FE11F52EAF34C000AA0001 /* components/QuickModelPickerView.swift in Sources */,

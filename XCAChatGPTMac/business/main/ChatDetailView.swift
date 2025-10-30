@@ -31,6 +31,7 @@ struct ChatDetailView: View {
     // Quick actions palette state
     @State private var showQuickActions: Bool = false
     @State private var actionsMode: QuickActions.Mode = .root
+    @StateObject private var composerCtrl = UnboundComposerController()
     // Fallback editor when Settings window cannot be opened
     @State private var editingProvider: CustomModelInstance? = nil
     // AnchoredPopover demo toggles (moved to InputBar)
@@ -284,7 +285,7 @@ struct ChatDetailView: View {
                 }
             }
             Divider()
-            InputBar(viewModel: viewModel, bot: bot, store: store, openQuickActions: {
+            InputBar(viewModel: viewModel, bot: bot, store: store, composer: composerCtrl, openQuickActions: {
                 actionsMode = .root
                 withAnimation(.spring(response: 0.2, dampingFraction: 0.9)) { showQuickActions = true }
             }, openBotSettings: {
@@ -356,20 +357,20 @@ struct ChatDetailView: View {
                     .keyboardShortcut(.init("n"), modifiers: .command)
                     .opacity(0.001)
                     .frame(width: 0, height: 0)
-                // Copy last reply: ⌥⇧C
+                // Copy last reply: ⌘⌥C
                 Button("") {
                     if showQuickActions { withAnimation(.easeOut(duration: 0.15)) { showQuickActions = false } }
                     viewModel.copyLastReply()
                 }
-                    .keyboardShortcut(.init("c"), modifiers: [.option, .shift])
+                    .keyboardShortcut(.init("c"), modifiers: [.command, .option])
                     .opacity(0.001)
                     .frame(width: 0, height: 0)
-                // Use last reply: ⌥⇧V
+                // Use last reply: ⌘⌥V
                 Button("") {
                     if showQuickActions { withAnimation(.easeOut(duration: 0.15)) { showQuickActions = false } }
                     viewModel.useLastReply()
                 }
-                    .keyboardShortcut(.init("v"), modifiers: [.option, .shift])
+                    .keyboardShortcut(.init("v"), modifiers: [.command, .option])
                     .opacity(0.001)
                     .frame(width: 0, height: 0)
                 // Toggle quick actions: ⌘K
@@ -391,7 +392,8 @@ struct ChatDetailView: View {
                     viewModel: viewModel,
                     bot: bot,
                     store: store,
-                    requestClear: { withAnimation(.easeOut(duration: 0.15)) { showQuickActions = false }; showClearConfirm = true }
+                    requestClear: { withAnimation(.easeOut(duration: 0.15)) { showQuickActions = false }; showClearConfirm = true },
+                    getDraftText: { composerCtrl.getText() }
                 )
             }
         }
@@ -670,16 +672,17 @@ private struct SessionMessagesView: View {
 }
 
 // MARK: - Input Bar with shortcuts and Quick Actions
-private struct InputBar: View {
-    @ObservedObject var viewModel: ChatSessionViewModel
-    let bot: GPTConversation
-    var store: BotStore?
-    var openQuickActions: () -> Void
-    var openBotSettings: () -> Void
+    private struct InputBar: View {
+        @ObservedObject var viewModel: ChatSessionViewModel
+        let bot: GPTConversation
+        var store: BotStore?
+        var composer: UnboundComposerController
+        var openQuickActions: () -> Void
+        var openBotSettings: () -> Void
     #if os(macOS)
     @EnvironmentObject private var authClient: BetterAuthClient
     #endif
-    @State private var inputHeight: CGFloat = ChatTokens.controlHeight
+        @State private var inputHeight: CGFloat = ChatTokens.controlHeight
     // AnchoredPopover test state (scoped to input bar)
     // Removed test toggles for AnchoredPopover demo
     @State private var showSessionPicker: Bool = false
@@ -688,19 +691,23 @@ private struct InputBar: View {
     var body: some View {
         VStack(spacing: 6) {
             HStack(alignment: .center, spacing: 8) {
-                GrowingTextView(
+                UnboundComposer(
                     placeholder: String(localized: "send_message_ellipsis"),
-                    text: $viewModel.input,
                     measuredHeight: $inputHeight,
                     minHeight: ChatTokens.controlHeight,
                     maxHeight: 140,
-                    onEnter: { Task { await viewModel.send() } },
-                    onShiftEnter: { /* newline inserted by NSTextView */ },
-                    onCommandEnter: { Task { await viewModel.send() } },
-                    onCommandK: { withAnimation(.spring(response: 0.2, dampingFraction: 0.9)) { openQuickActions() } }
+                    onCommandEnter: {
+                        Task {
+                            let text = composer.getText()
+                            await MainActor.run { viewModel.input = text }
+                            await viewModel.send()
+                            await MainActor.run { composer.clear() }
+                        }
+                    },
+                    onCommandK: { withAnimation(.spring(response: 0.2, dampingFraction: 0.9)) { openQuickActions() } },
+                    controller: composer
                 )
                 .frame(height: inputHeight)
-                .animation(.easeInOut(duration: 0.16), value: inputHeight)
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.2)))
                 if viewModel.isSending {
                     Button(action: { viewModel.stopStreaming() }) {
@@ -710,7 +717,14 @@ private struct InputBar: View {
                     .help("stop_generating_shortcut")
                     .keyboardShortcut(.init("."), modifiers: .command)
                 } else {
-                    Button(action: { Task { await viewModel.send() } }) {
+                    Button(action: {
+                        Task {
+                            let text = composer.getText()
+                            await MainActor.run { viewModel.input = text }
+                            await viewModel.send()
+                            await MainActor.run { composer.clear() }
+                        }
+                    }) {
                         Image(systemName: "paperplane")
                     }
                     .help("send_and_newline_help")
@@ -814,6 +828,7 @@ private struct QuickActions: View {
     let bot: GPTConversation
     var store: BotStore?
     var requestClear: () -> Void = {}
+    var getDraftText: (() -> String)? = nil
 
     @State private var query: String = ""
     @State private var selection: Int = 0
@@ -835,12 +850,21 @@ private struct QuickActions: View {
 
     private var baseItems: [Item] {
         var arr: [Item] = []
-        if !viewModel.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            arr.append(Item(title: String(localized: "send"), systemImage: "paperplane", keyHint: "↩", group: .message, action: { Task { await viewModel.send() }; dismiss() }))
+        let draft = (getDraftText?() ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasDraft = !draft.isEmpty
+        let hasVMInput = !viewModel.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if hasDraft || hasVMInput {
+            arr.append(Item(title: String(localized: "send"), systemImage: "paperplane", keyHint: "↩", group: .message, action: {
+                Task {
+                    if hasDraft { await MainActor.run { viewModel.input = draft } }
+                    await viewModel.send()
+                }
+                dismiss()
+            }))
         }
         arr.append(Item(title: String(localized: "regenerate_response"), systemImage: "arrow.clockwise", keyHint: "⌘R", group: .message, action: { Task { await viewModel.regenerateLast() }; dismiss() }))
-        arr.append(Item(title: String(localized: "copy_last_reply"), systemImage: "doc.on.doc", keyHint: "⌥⇧C", group: .clipboard, action: { viewModel.copyLastReply(); dismiss() }))
-        arr.append(Item(title: String(localized: "paste_to_front_app"), systemImage: "rectangle.and.text.magnifyingglass", keyHint: "⌥⇧V", group: .clipboard, action: { viewModel.useLastReply(); dismiss() }))
+        arr.append(Item(title: String(localized: "copy_last_reply"), systemImage: "doc.on.doc", keyHint: "⌘⌥C", group: .clipboard, action: { viewModel.copyLastReply(); dismiss() }))
+        arr.append(Item(title: String(localized: "paste_to_front_app"), systemImage: "rectangle.and.text.magnifyingglass", keyHint: "⌘⌥V", group: .clipboard, action: { viewModel.useLastReply(); dismiss() }))
         arr.append(Item(title: String(localized: "run_with_other_agent"), systemImage: "bolt.horizontal.circle", keyHint: "→", group: .agent, opensSubmenu: .runWithAgent, action: { switchMode(.runWithAgent) }))
         arr.append(Item(title: String(localized: "new_chat_with_other_agent"), systemImage: "arrow.uturn.forward", keyHint: "→", group: .agent, opensSubmenu: .newChatWithAgent, action: { switchMode(.newChatWithAgent) }))
         arr.append(Item(title: String(localized: "clear_chat"), systemImage: "eraser", keyHint: "⌘D", group: .danger, action: { requestClear() }))
@@ -853,7 +877,9 @@ private struct QuickActions: View {
         case .runWithAgent:
             return list.map { other in
                 Item(title: other.name.isEmpty ? other.id.uuidString : other.name, subtitle: String(localized: "run_current_input_or_last_question"), systemImage: "bolt.fill", keyHint: nil, group: .agent, action: {
-                    Task { await viewModel.runWithAgent(agent: other, using: viewModel.input.isEmpty ? nil : viewModel.input) }
+                    let draft = (getDraftText?() ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    let use = draft.isEmpty ? (viewModel.input.isEmpty ? nil : viewModel.input) : draft
+                    Task { await viewModel.runWithAgent(agent: other, using: use) }
                     dismiss()
                 })
             }
@@ -863,7 +889,7 @@ private struct QuickActions: View {
                     if let store {
                         store.selectedID = other.id
                         if let chosen = store.selected {
-                            viewModel.input = viewModel.input.isEmpty ? (viewModel.messages.last(where: { $0.sender == .user })?.text ?? "") : viewModel.input
+                            viewModel.input = viewModel.input.isEmpty ? viewModel.latestUserQuestionForActions() : viewModel.input
                             viewModel.updateConversation(chosen)
                         }
                     }
@@ -1006,12 +1032,20 @@ private struct QuickActions: View {
                     case .k:
                         dismiss(); return true
                     case .enter, .keypadEnter:
-                        Task { await viewModel.send() }
+                        Task {
+                            let draft = (getDraftText?() ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                            if !draft.isEmpty { await MainActor.run { viewModel.input = draft } }
+                            await viewModel.send()
+                        }
                         dismiss(); return true
-                    case .c:
-                        if mods.contains(.option) && mods.contains(.shift) { viewModel.copyLastReply(); dismiss(); return true }
-                    case .v:
-                        if mods.contains(.option) && mods.contains(.shift) { viewModel.useLastReply(); dismiss(); return true }
+                    default: break
+                    }
+                }
+                // Clipboard actions: Command+Option
+                if mods.contains(.command) && mods.contains(.option) {
+                    switch a {
+                    case .c: viewModel.copyLastReply(); dismiss(); return true
+                    case .v: viewModel.useLastReply(); dismiss(); return true
                     default: break
                     }
                 }

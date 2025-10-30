@@ -95,11 +95,8 @@ private class CustomTextView: NSTextView {
     var onShiftEnter: (() -> Void)?
     @objc var placeholderAttributedString: NSAttributedString?
 
+    // Respect IME composition and keep Enter as newline; do not send on Enter here.
     override func insertNewline(_ sender: Any?) {
-        if NSEvent.modifierFlags.contains(.shift) {
-            super.insertNewline(sender)
-        } else {
-            onShiftEnter?()
-        }
+        super.insertNewline(sender)
     }
 }

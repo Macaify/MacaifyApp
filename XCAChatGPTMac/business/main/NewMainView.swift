@@ -322,7 +322,6 @@ final class ChatSessionViewModel: ObservableObject {
             }
             // 不将历史消息回填到 UI，本地只维护流式的临时气泡
             self.api.history = rows.flatMap { [Message(role: "user", content: $0.0), Message(role: "assistant", content: $0.1)] }
-            updateTokenHint(includingInput: input)
         } catch {
             self.messages = []
         }
@@ -441,7 +440,6 @@ final class ChatSessionViewModel: ObservableObject {
         }
         // For UI and persistence, keep the user's message clean (no inline context)
         messages.append(.init(sender: .user, text: text))
-        updateTokenHint(includingInput: "")
         messages.append(.init(sender: .assistant, text: "", isStreaming: true))
         do {
             // Inject context into system prompt while sending (temporary override)
@@ -476,6 +474,8 @@ final class ChatSessionViewModel: ObservableObject {
             if let idx = messages.lastIndex(where: { $0.isStreaming }) { messages[idx].isStreaming = false }
             print("[SEND_PERSIST] id=\(eid) to=\(String(describing: targetSessionID)) len=\(buffer.count)")
             persist(user: text, assistant: buffer, to: targetSessionID)
+            // Update token hint only after send/persist completes
+            updateTokenHint(includingInput: "")
         } catch {
             // Print for debugging visibility
             print("[Chat] stream error:", error)
@@ -548,7 +548,6 @@ final class ChatSessionViewModel: ObservableObject {
         error = nil
         messages.append(.init(sender: .user, text: text))
         messages.append(.init(sender: .assistant, text: "", isStreaming: true))
-        updateTokenHint(includingInput: "")
     }
 
     @MainActor
@@ -578,6 +577,7 @@ final class ChatSessionViewModel: ObservableObject {
                 }
                 // After persistence, switch to normal session mode next render
                 pendingNewSession = false
+                updateTokenHint(includingInput: "")
             }
         }
         print("[MIRROR_END] id=\(eid)")
@@ -595,15 +595,20 @@ final class ChatSessionViewModel: ObservableObject {
     // MARK: - Quick actions
     func copyLastReply() {
         if let last = messages.last(where: { $0.sender == .assistant && !$0.text.isEmpty }) {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(last.text, forType: .string)
+            NSPasteboard.general.clearContents(); NSPasteboard.general.setString(last.text, forType: .string); return
         }
+        let persisted = latestPersistedAssistantReply()
+        guard !persisted.isEmpty else { return }
+        NSPasteboard.general.clearContents(); NSPasteboard.general.setString(persisted, forType: .string)
     }
     func useLastReply() {
         if let last = messages.last(where: { $0.sender == .assistant && !$0.text.isEmpty }) {
-            paste(delay: 0.1, sentence: last.text)
-            NSApp.hide(nil)
+            paste(delay: 0.1, sentence: last.text); NSApp.hide(nil); return
         }
+        let persisted = latestPersistedAssistantReply()
+        guard !persisted.isEmpty else { return }
+        paste(delay: 0.1, sentence: persisted)
+        NSApp.hide(nil)
     }
     func injectContext(_ text: String) {
         contextSnippet = text
@@ -611,10 +616,40 @@ final class ChatSessionViewModel: ObservableObject {
         persistContextToCurrentSession()
     }
 
+    // MARK: - Quick Core Data queries for latest messages
+    func latestPersistedUserQuestion() -> String {
+        guard let sel = selectedSessionID else { return "" }
+        let ctx = PersistenceController.shared.container.viewContext
+        guard let session = try? ctx.existingObject(with: sel) as? GPTSession else { return "" }
+        let req: NSFetchRequest<GPTAnswer> = GPTAnswer.fetchRequest()
+        req.predicate = NSPredicate(format: "session == %@", session)
+        req.sortDescriptors = [NSSortDescriptor(key: "timestamp_", ascending: false)]
+        req.fetchLimit = 1
+        if let row = try? ctx.fetch(req).first { return row.prompt }
+        return ""
+    }
+    func latestPersistedAssistantReply() -> String {
+        guard let sel = selectedSessionID else { return "" }
+        let ctx = PersistenceController.shared.container.viewContext
+        guard let session = try? ctx.existingObject(with: sel) as? GPTSession else { return "" }
+        let req: NSFetchRequest<GPTAnswer> = GPTAnswer.fetchRequest()
+        req.predicate = NSPredicate(format: "session == %@", session)
+        req.sortDescriptors = [NSSortDescriptor(key: "timestamp_", ascending: false)]
+        req.fetchLimit = 1
+        if let row = try? ctx.fetch(req).first { return row.response }
+        return ""
+    }
+    func latestUserQuestionForActions() -> String {
+        let t = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !t.isEmpty { return t }
+        if let s = messages.last(where: { $0.sender == .user })?.text, !s.isEmpty { return s }
+        return latestPersistedUserQuestion()
+    }
+
     @MainActor
     func runWithAgent(agent: GPTConversation, using text: String?) async {
         let base = (text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "")
-        let fallback = messages.last(where: { $0.sender == .user })?.text ?? ""
+        let fallback = latestUserQuestionForActions()
         var composed = base.isEmpty ? fallback : base
         guard !composed.isEmpty else {
             self.error = "没有可运行的输入（请输入内容或选择一条消息）"
@@ -706,7 +741,8 @@ final class ChatSessionViewModel: ObservableObject {
     @MainActor
     func regenerateLast() async {
         guard !isSending else { return }
-        guard let lastUser = messages.last(where: { $0.sender == .user })?.text, !lastUser.isEmpty else { return }
+        let lastUser = messages.last(where: { $0.sender == .user })?.text ?? latestPersistedUserQuestion()
+        guard !lastUser.isEmpty else { return }
         isSending = true
         messages.append(.init(sender: .assistant, text: "", isStreaming: true))
         do {
@@ -726,6 +762,7 @@ final class ChatSessionViewModel: ObservableObject {
             }
             if let idx = messages.lastIndex(where: { $0.isStreaming }) { messages[idx].isStreaming = false }
             persist(user: lastUser, assistant: buffer)
+            updateTokenHint(includingInput: "")
         } catch {
             print("[Chat] regenerate error:", error)
             if let idx = messages.lastIndex(where: { $0.isStreaming }) { messages.remove(at: idx) }
@@ -781,13 +818,21 @@ final class ChatSessionViewModel: ObservableObject {
     }
 
     func updateTokenHint(includingInput input: String) {
-        let historyText = api.history.map { $0.content }.joined(separator: "\n")
         let maxTk = Defaults[.maxToken]
         tokenCalcTask?.cancel()
-        tokenCalcTask = Task.detached(priority: .utility) { [historyText, input, weak self] in
+        tokenCalcTask = Task.detached(priority: .utility) { [weak self, input] in
             guard let self else { return }
-            let text = historyText + (input.isEmpty ? "" : ("\n" + input))
-            let total = self.encoder.encode(text: text).count
+            // Debounce to reduce work while typing rapidly
+            do {
+                try await Task.sleep(nanoseconds: 250_000_000) // 250ms
+                try Task.checkCancellation()
+            } catch { return }
+            // Snapshot cached history tokens on main, then compute input tokens off-main
+            let historyTokens = await MainActor.run { self.api.cachedHistoryTokenCount }
+            // Bound input size for hint to avoid worst-case cost
+            let inputTail = String(input.suffix(4000))
+            let inputTokens = self.encoder.encode(text: inputTail).count
+            let total = historyTokens + inputTokens
             await MainActor.run { [weak self] in self?.tokenHint = "~ \(total) / \(maxTk) tokens" }
         }
     }
@@ -829,7 +874,6 @@ final class ChatSessionViewModel: ObservableObject {
             await MainActor.run { [weak self] in
                 guard let self else { return }
                 self.api.history = rows.flatMap { [Message(role: "user", content: $0.0), Message(role: "assistant", content: $0.1)] }
-                self.updateTokenHint(includingInput: self.input)
             }
         } catch {
             await MainActor.run { [weak self] in self?.api.history = [] }
@@ -895,14 +939,14 @@ final class ChatSessionViewModel: ObservableObject {
                 PersistenceController.shared.clearAnswers(session: s)
                 messages.removeAll()
                 api.deleteHistoryList()
-                updateTokenHint(includingInput: input)
+                tokenHint = ""
                 return
             }
         }
         // No concrete session selected; clear only in-memory state
         messages.removeAll()
         api.deleteHistoryList()
-        updateTokenHint(includingInput: input)
+        tokenHint = ""
     }
 }
 
@@ -945,9 +989,7 @@ struct MainSplitView: View {
         })
         // No cookie bridge needed; title auth uses Bearer
         // Let ChatDetailView drive conversation updates on appear/change.
-        .onChange(of: chatVM.input) { newValue in
-            chatVM.updateTokenHint(includingInput: newValue)
-        }
+        // Do not recompute tokens while typing; token hint updates only after send/regenerate
         .onAppear {
             // Show onboarding on first launch if Accessibility not granted
             let key = "onboarding.accessibility.shown"
