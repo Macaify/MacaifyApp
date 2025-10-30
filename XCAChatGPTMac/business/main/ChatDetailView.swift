@@ -277,11 +277,24 @@ struct ChatDetailView: View {
                         messagesList
                     }
                 }
+                .onAppear {
+                    // On first appear, jump to the bottom anchor when available (no animation)
+                    DispatchQueue.main.async {
+                        proxy.scrollTo("session-bottom", anchor: .bottom)
+                    }
+                }
                 .onChange(of: viewModel.messages.count) { _ in
-                    if let last = viewModel.messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
+                    if let last = viewModel.messages.last { proxy.scrollTo(last.id, anchor: .bottom) }
                 }
                 .onChange(of: viewModel.messages.last?.text) { _ in
-                    if let last = viewModel.messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
+                    if let last = viewModel.messages.last { proxy.scrollTo(last.id, anchor: .bottom) }
+                }
+                .onChange(of: viewModel.selectedSessionID) { _ in
+                    proxy.scrollTo("session-bottom", anchor: .bottom)
+                }
+                // Whenever Core Data saves changes, ensure we keep the view pinned at the latest
+                .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave)) { _ in
+                    proxy.scrollTo("session-bottom", anchor: .bottom)
                 }
             }
             Divider()
@@ -499,6 +512,8 @@ private struct SessionMessagesView: View {
                 let streaming = viewModel.messages[sIdx]
                 bubble(text: streaming.text, sender: .assistant, id: streaming.id, streaming: true)
             }
+            // Bottom anchor for programmatic scroll
+            Color.clear.frame(height: 1).id("session-bottom")
         }
         .padding(12)
     }
