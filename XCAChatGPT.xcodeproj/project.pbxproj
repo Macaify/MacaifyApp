@@ -32,7 +32,6 @@
 		694D075C2CABA1D00091156D /* HoveredEffect.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694D07572CABA1D00091156D /* HoveredEffect.swift */; };
 		694D075E2CABA1E40091156D /* Environments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694D075D2CABA1E40091156D /* Environments.swift */; };
 		694D075F2CABA1E40091156D /* Environments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694D075D2CABA1E40091156D /* Environments.swift */; };
-		69FE12012EAF400000AA0001 /* components/UnboundComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE12002EAF400000AA0001 /* components/UnboundComposer.swift */; };
 		695C8A1F2A6A0DA600C621E2 /* MenuBarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 695C8A1D2A6A0CFE00C621E2 /* MenuBarManager.swift */; };
 		695C8A2B2A6B892F00C621E2 /* MSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 695C8A2A2A6B892F00C621E2 /* MSection.swift */; };
 		695C8A2F2A6BCCD000C621E2 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 695C8A2E2A6BCCD000C621E2 /* Constants.swift */; };
@@ -186,6 +185,7 @@
 		69FE11F12EAF330100AA0001 /* components/AnchoredPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE11F02EAF330100AA0001 /* components/AnchoredPopover.swift */; };
 		69FE11F32EAF33B800AA0001 /* components/ProviderListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE11F22EAF33B800AA0001 /* components/ProviderListView.swift */; };
 		69FE11F52EAF34C000AA0001 /* components/QuickModelPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE11F42EAF34C000AA0001 /* components/QuickModelPickerView.swift */; };
+		69FE12012EAF400000AA0001 /* components/UnboundComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FE12002EAF400000AA0001 /* components/UnboundComposer.swift */; };
 		8B057585298E52C000A56C9A /* XCAChatGPTMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B057584298E52C000A56C9A /* XCAChatGPTMacApp.swift */; };
 		8B057589298E52C000A56C9A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8B057588298E52C000A56C9A /* Assets.xcassets */; };
 		8B05758C298E52C000A56C9A /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8B05758B298E52C000A56C9A /* Preview Assets.xcassets */; };
@@ -416,6 +416,7 @@
 		69FE11F02EAF330100AA0001 /* components/AnchoredPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = components/AnchoredPopover.swift; sourceTree = "<group>"; };
 		69FE11F22EAF33B800AA0001 /* components/ProviderListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = components/ProviderListView.swift; sourceTree = "<group>"; };
 		69FE11F42EAF34C000AA0001 /* components/QuickModelPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = components/QuickModelPickerView.swift; sourceTree = "<group>"; };
+		69FE12002EAF400000AA0001 /* components/UnboundComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = components/UnboundComposer.swift; sourceTree = "<group>"; };
 		8B057582298E52C000A56C9A /* Macaify.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Macaify.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8B057584298E52C000A56C9A /* XCAChatGPTMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XCAChatGPTMacApp.swift; sourceTree = "<group>"; };
 		8B057588298E52C000A56C9A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -445,7 +446,6 @@
 		8B91C015298ADC9D0079AF26 /* MessageRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageRow.swift; sourceTree = "<group>"; };
 		8B91C017298ADF4E0079AF26 /* DotLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DotLoadingView.swift; sourceTree = "<group>"; };
 		8B91C019298ADF7F0079AF26 /* MessageRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageRowView.swift; sourceTree = "<group>"; };
-		69FE12002EAF400000AA0001 /* components/UnboundComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = components/UnboundComposer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1481,7 +1481,7 @@
 				CODE_SIGN_ENTITLEMENTS = XCAChatGPTMac/XCAChatGPTMac.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1030000;
+				CURRENT_PROJECT_VERSION = 1030100;
 				DEVELOPMENT_ASSET_PATHS = "\"XCAChatGPTMac/Preview Content\"";
 				DEVELOPMENT_TEAM = JDZMWLF652;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1497,7 +1497,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.3.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.antiless.macaify.mac;
 				PRODUCT_NAME = Macaify;
 				SDKROOT = macosx;
@@ -1515,7 +1515,7 @@
 				CODE_SIGN_ENTITLEMENTS = XCAChatGPTMac/XCAChatGPTMac.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1030000;
+				CURRENT_PROJECT_VERSION = 1030100;
 				DEVELOPMENT_ASSET_PATHS = "\"XCAChatGPTMac/Preview Content\"";
 				DEVELOPMENT_TEAM = JDZMWLF652;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1531,7 +1531,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.3.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.antiless.macaify.mac;
 				PRODUCT_NAME = Macaify;
 				SDKROOT = macosx;
