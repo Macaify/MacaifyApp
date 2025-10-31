@@ -79,71 +79,77 @@ class HotKeyManager {
     }
 
     static func register(_ conversation: GPTConversation) {
-        KeyboardShortcuts.onKeyDown(for: conversation.Name) { [self] in
-            NSLog("key pressed \(conversation.autoAddSelectedText) conversation \(conversation.id) autoAdd \(conversation.autoAddSelectedText)")
-
-            print("top is found \(NSApplication.shared.isActive)")
-//            print("top is Main \(case .main = PathManager.shared.top)")
-
-            let isActive = NSApplication.shared.isActive
-
-            if conversation.typingInPlace {
-                TypingInPlace.shared.typeInPlace(conv: conversation)
-            } else if isActive {
-                PathManager.shared.toChat(conversation, msg: "")
-                // Notify SwiftUI main split view to focus this bot and inject context
-                let eid = UUID().uuidString
-                print("[QC_POST] id=\(eid) name=QuickChatSelectedText conv=\(conversation.id) len=0")
-                NotificationCenter.default.post(name: .init("QuickChatSelectedText"), object: nil, userInfo: [
-                    "eventId": eid,
-                    "convId": conversation.id.uuidString,
-                    "text": ""
-                ])
-            } else if (conversation.autoAddSelectedText) {
-                StartupPasteboardManager.shared.startup { text in
-                    switch PathManager.shared.top {
-                    case .chat(let command, _,_):
-                        print("tapped text \(text)")
-                        PathManager.shared.toChat(conversation, msg: text)
-                        if command.id == conversation.id {
-                            if let text = text, !text.isEmpty {
-                                let vm = ConversationViewModel.shared.commandViewModel(conversation)
-                                print("copy text \(text) to viewmodel \(vm)")
-                                vm.inputMessage = text
-                                Task { @MainActor in
-                                    if (!vm.isInteractingWithChatGPT && !vm.inputMessage.isEmpty) {
-                                        await vm.sendTapped()
-                                    }
-                                }
-                            }
-                        }
-                    default:
-                        PathManager.shared.toChat(conversation, msg: text)
-                    }
-
-                    // Broadcast selection to SwiftUI main split view as well
-                    let eid = UUID().uuidString
-                    print("[QC_POST] id=\(eid) name=QuickChatSelectedText conv=\(conversation.id) len=\(text?.count ?? 0)")
-                    NotificationCenter.default.post(name: .init("QuickChatSelectedText"), object: nil, userInfo: [
-                        "eventId": eid,
-                        "convId": conversation.id.uuidString,
-                        "text": text ?? ""
-                    ])
-                    resume()
-                }
-            } else {
-                // No auto text; still open and focus the bot
-                let eid = UUID().uuidString
-                print("[QC_POST] id=\(eid) name=QuickChatSelectedText conv=\(conversation.id) len=0")
-                NotificationCenter.default.post(name: .init("QuickChatSelectedText"), object: nil, userInfo: [
-                    "eventId": eid,
-                    "convId": conversation.id.uuidString,
-                    "text": ""
-                ])
-                resume()
-                PathManager.shared.toChat(conversation)
-            }
-        }
+//        KeyboardShortcuts.onKeyDown(for: conversation.Name) { [self] in
+//            NSLog("key pressed \(conversation.autoAddSelectedText) conversation \(conversation.id) autoAdd \(conversation.autoAddSelectedText)")
+//
+//            print("top is found \(NSApplication.shared.isActive)")
+////            print("top is Main \(case .main = PathManager.shared.top)")
+//
+//            let isActive = NSApplication.shared.isActive
+//
+//            if conversation.typingInPlace {
+//                TypingInPlace.shared.typeInPlace(conv: conversation)
+//            } else if isActive {
+//                PathManager.shared.toChat(conversation, msg: "")
+//                // Notify SwiftUI main split view to focus this bot and inject context
+//                let eid = UUID().uuidString
+//                print("[QC_POST] id=\(eid) name=QuickChatSelectedText conv=\(conversation.id) len=0")
+//                NotificationCenter.default.post(name: .init("QuickChatSelectedText"), object: nil, userInfo: [
+//                    "eventId": eid,
+//                    "convId": conversation.id.uuidString,
+//                    "text": ""
+//                ])
+//            } else if (conversation.autoAddSelectedText) {
+//                StartupPasteboardManager.shared.startup { text in
+//                    switch PathManager.shared.top {
+//                    case .chat(let command, _,_):
+//                        print("tapped text \(text)")
+//                        PathManager.shared.toChat(conversation, msg: text)
+//                        if command.id == conversation.id {
+//                            if let text = text, !text.isEmpty {
+//                                let vm = ConversationViewModel.shared.commandViewModel(conversation)
+//                                print("copy text \(text) to viewmodel \(vm)")
+//                                vm.inputMessage = text
+//                                Task { @MainActor in
+//                                    if (!vm.isInteractingWithChatGPT && !vm.inputMessage.isEmpty) {
+//                                        await vm.sendTapped()
+//                                    }
+//                                }
+//                            }
+//                        }
+//                    default:
+//                        PathManager.shared.toChat(conversation, msg: text)
+//                    }
+//
+//                    // Broadcast selection to SwiftUI main split view as well
+//                    let eid = UUID().uuidString
+//                    print("[QC_POST] id=\(eid) name=QuickChatSelectedText conv=\(conversation.id) len=\(text?.count ?? 0)")
+//                    NotificationCenter.default.post(name: .init("QuickChatSelectedText"), object: nil, userInfo: [
+//                        "eventId": eid,
+//                        "convId": conversation.id.uuidString,
+//                        "text": text ?? ""
+//                    ])
+//                    resume()
+//                }
+//            } else {
+//                // In-context mode: capture current selection and use as context
+//                StartupPasteboardManager.shared.startup { text in
+//                    let bundleId = StartupPasteboardManager.shared.currentSourceBundleId ?? ""
+//                    let appName = StartupPasteboardManager.shared.currentSourceAppName ?? ""
+//                    let eid = UUID().uuidString
+//                    print("[QC_POST] id=\(eid) name=QuickChatSelectedText conv=\(conversation.id) len=\(text?.count ?? 0)")
+//                    NotificationCenter.default.post(name: .init("QuickChatSelectedText"), object: nil, userInfo: [
+//                        "eventId": eid,
+//                        "convId": conversation.id.uuidString,
+//                        "text": text ?? "",
+//                        "sourceBundleId": bundleId,
+//                        "sourceAppName": appName
+//                    ])
+//                    resume()
+//                    PathManager.shared.toChat(conversation)
+//                }
+//            }
+//        }
 
         // Additional explicit bindings for two-mode shortcuts
         if KeyboardShortcuts.getShortcut(for: conversation.NameEdit) != nil {

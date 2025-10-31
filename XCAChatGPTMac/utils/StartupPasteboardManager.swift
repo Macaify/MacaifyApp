@@ -17,6 +17,8 @@ class StartupPasteboardManager {
     var currentSourceAppName: String? = nil
 
     func startup(task: @escaping (_ text: String?) -> Void) {
+        // Ensure Accessibility permission prompt is shown if missing
+        if !hasAccessibilityPermission() { _ = hasAccessibilityPermission(prompt: true) }
         let (bid, name) = frontmostAppInfo()
         print("[StartupPB] frontmost before copy: \(bid ?? "?") / \(name ?? "?")")
         currentSourceBundleId = bid

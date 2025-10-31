@@ -991,11 +991,11 @@ struct MainSplitView: View {
         // Let ChatDetailView drive conversation updates on appear/change.
         // Do not recompute tokens while typing; token hint updates only after send/regenerate
         .onAppear {
-            // Show onboarding on first launch if Accessibility not granted
-            let key = "onboarding.accessibility.shown"
-            let firstShown = UserDefaults.standard.bool(forKey: key)
-            if !firstShown && !hasAccessibilityPermission() {
+            // If Accessibility permission is missing, always surface onboarding and
+            // also trigger the system prompt to guide user to Settings.
+            if !hasAccessibilityPermission() {
                 showAccessibilityOnboarding = true
+                _ = hasAccessibilityPermission(prompt: true)
             }
         }
         .sheet(isPresented: $showAccessibilityOnboarding) {

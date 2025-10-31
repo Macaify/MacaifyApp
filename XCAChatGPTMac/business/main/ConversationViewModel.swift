@@ -154,55 +154,39 @@ class ConversationViewModel: ObservableObject {
 }
 
 extension GPTConversation {
-    
+    // Build an API bound to this conversation's model selection (account or custom instance)
     var API: ChatGPTAPI {
-        // Resolve source and model for this conversation
-        var modelId = ModelSelectionManager.shared.getSelectedModelId()
-        var provider = Defaults[.selectedProvider]
-        var apiKey = Defaults[.apiKey]
-        var baseURL = Defaults[.proxyAddress]
+        var model = self.modelId
+        var provider = "openai"
+        var baseURL = ""
+        var key: String = ""
         var maxTok = Defaults[.maxToken]
         var useAccountGateway = false
 
-        if modelSource == "instance", let inst = ProviderStore.shared.providers.first(where: { $0.id == modelInstanceId }), let token = ProviderStore.shared.token(for: inst.id) {
-            // Per-bot custom instance
-            modelId = inst.modelId
-            provider = inst.provider
-            apiKey = token
+        let source = self.modelSource
+        if source == "instance", let inst = ProviderStore.shared.providers.first(where: { $0.id == self.modelInstanceId }) {
+            model = inst.modelId
+            provider = (inst.provider == "compatible" ? "openai" : inst.provider)
             baseURL = inst.baseURL
+            key = ProviderStore.shared.token(for: inst.id) ?? ""
             if let ctx = inst.contextLength, ctx > 0 { maxTok = ctx }
         } else {
-            // Use bot-specific account model if specified; otherwise fallback to global defaults
-            if modelSource == "account" && !modelId.isEmpty {
-                if let info = providerForAccountModel(modelId) {
-                    provider = info.provider
-                    if info.context > 0 { maxTok = info.context }
-                }
-                useAccountGateway = true
-            } else if Defaults[.defaultSource] == "provider" {
-                let instanceId = Defaults[.selectedProviderInstanceId]
-                if let inst = ProviderStore.shared.providers.first(where: { $0.id == instanceId }), let token = ProviderStore.shared.token(for: inst.id) {
-                    modelId = inst.modelId
-                    provider = inst.provider
-                    apiKey = token
-                    baseURL = inst.baseURL
-                    if let ctx = inst.contextLength, ctx > 0 { maxTok = ctx }
+            // Account models via gateway; derive provider by slug from catalog
+            let selected = model.isEmpty ? Defaults[.selectedModelId] : model
+            model = selected.isEmpty ? "macaify-1-mini" : selected
+            if let prov = ModelSelectionManager.shared.modelsByProvider.first(where: { (_, arr) in arr.contains(where: { $0.slug == model }) })?.key {
+                provider = prov
+                if let ctx = ModelSelectionManager.shared.modelsByProvider[prov]?.first(where: { $0.slug == model })?.contextTokens, ctx > 0 {
+                    maxTok = ctx
                 }
             } else {
-                // Default source == account
-                useAccountGateway = true
+                provider = Defaults[.selectedProvider].isEmpty ? "openai" : Defaults[.selectedProvider]
             }
+            useAccountGateway = true
+            baseURL = ""
+            key = ""
         }
-        return ChatGPTAPI(apiKey: apiKey, model: modelId, provider: provider, maxToken: maxTok, systemPrompt: prompt, temperature: 0.5, baseURL: baseURL, withContext: withContext, useAccountGateway: useAccountGateway)
-    }
-
-    private func providerForAccountModel(_ modelName: String) -> (provider: String, context: Int)? {
-        for cat in LLMModelsManager.shared.modelCategories {
-            if let m = cat.models.first(where: { $0.name == modelName }) {
-                return (cat.provider, m.contextLength)
-            }
-        }
-        return nil
+        return ChatGPTAPI(apiKey: key, model: model, provider: provider, maxToken: maxTok, systemPrompt: prompt, temperature: 0.5, baseURL: baseURL, withContext: withContext, useAccountGateway: useAccountGateway)
     }
     
     var shortcutDescription: String {

@@ -18,6 +18,7 @@ class TypingInPlace: ObservableObject {
     private var pasteTimer: Timer? = nil
     
     func typeInPlace(conv: GPTConversation) {
+        if !hasAccessibilityPermission() { _ = hasAccessibilityPermission(prompt: true) }
         let (bid, name) = frontmostAppInfo()
         print("[TIP] frontmost before copy: \(bid ?? "?") / \(name ?? "?")")
         // Try AX first for better reliability
@@ -98,6 +99,7 @@ class TypingInPlace: ObservableObject {
     } 
     
     func typeInPlace(conv: GPTConversation, context: String, command: String) {
+        if !hasAccessibilityPermission() { _ = hasAccessibilityPermission(prompt: true) }
         self.interupt()
         self.api = conv.API
         self.api?.systemPrompt = context

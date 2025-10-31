@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import KeyboardShortcuts
+import Defaults
 
 class ConversationViewModel: ObservableObject {
 
@@ -98,11 +99,38 @@ class ConversationViewModel: ObservableObject {
 }
 
 extension GPTConversation {
-    
+    // Updated to use per-conversation model selection (account or custom instance)
     var API: ChatGPTAPI {
-        let proxyAddress = UserDefaults.standard.object(forKey: "proxyAddress") as? String ?? ""
-        let useProxy = UserDefaults.standard.object(forKey: "useProxy") as? Bool ?? false
-        return ChatGPTAPI(apiKey: APIKeyManager.shared.key ?? "", model: ModelSelectionManager.shared.selectedModel.name, systemPrompt: prompt, temperature: 0.5, baseURL: useProxy ? proxyAddress : nil)
+        var model = self.modelId
+        var provider = "openai"
+        var baseURL = ""
+        var key: String = ""
+        var maxTok = Defaults[.maxToken]
+        var useAccountGateway = false
+
+        let source = self.modelSource
+        if source == "instance", let inst = ProviderStore.shared.providers.first(where: { $0.id == self.modelInstanceId }) {
+            model = inst.modelId
+            provider = (inst.provider == "compatible" ? "openai" : inst.provider)
+            baseURL = inst.baseURL
+            key = ProviderStore.shared.token(for: inst.id) ?? ""
+            if let ctx = inst.contextLength, ctx > 0 { maxTok = ctx }
+        } else {
+            let selected = model.isEmpty ? Defaults[.selectedModelId] : model
+            model = selected.isEmpty ? "macaify-1-mini" : selected
+            if let prov = ModelSelectionManager.shared.modelsByProvider.first(where: { (_, arr) in arr.contains(where: { $0.slug == model }) })?.key {
+                provider = prov
+                if let ctx = ModelSelectionManager.shared.modelsByProvider[prov]?.first(where: { $0.slug == model })?.contextTokens, let ctx = ctx, ctx > 0 {
+                    maxTok = ctx
+                }
+            } else {
+                provider = Defaults[.selectedProvider].isEmpty ? "openai" : Defaults[.selectedProvider]
+            }
+            useAccountGateway = true
+            baseURL = ""
+            key = ""
+        }
+        return ChatGPTAPI(apiKey: key, model: model, provider: provider, maxToken: maxTok, systemPrompt: prompt, temperature: 0.5, baseURL: baseURL, withContext: withContext, useAccountGateway: useAccountGateway)
     }
     
     var shortcutDescription: String {
