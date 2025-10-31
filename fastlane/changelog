@@ -1,25 +1,6 @@
-# v1.3.0
+# v1.3.2
 
-Release Date: October 28, 2025
-
-A major update introducing subscription‑based account models, in‑context chat across apps, and multi‑session conversations per Agent, along with Markdown, Quick Actions, and a better update experience.
-
-### New
-- Subscription and account models (no API key needed): Sign in with Apple/Google, browse recommended models, and upgrade in‑app when a model requires it.
-- In‑context chat anywhere: Select text in any app and press the hotkey to start a conversation using that selection as context; supports streaming type‑in‑place for instant edits.
-- Multiple conversations per Agent: Create, rename, archive, and switch between sessions; presets are reused across sessions.
-- Auto‑generated titles: New conversations are named automatically after the first message.
-
-### Improvements
-- Replies render as Markdown; while streaming, show clean plain text with a caret indicator. Copy response as Markdown when complete.
-- Quick Actions palette (Cmd+K): send/regenerate, copy/paste last reply, run with another Agent, and start a new session.
-- Session‑scoped context: context is saved on the session and injected into the system prompt only when sending; user messages stay clean.
-- Default model selection: compact pickers with friendly names and recommended models. Custom model instances support Base URL and Keychain token storage.
-- App updates: update indicator in the menu and an Update Settings view with release notes and version history. Auto‑checks on launch and when opening settings.
-- UI/UX polish: clearer keyboard hints, refined input bar, token usage estimate, and localization updates.
+Release Date: October 30, 2025
 
 ### Fixes
-- Resolved duplicate “Open & Chat” windows when triggered rapidly.
-- Improved session tab selection, click, and rename behavior.
-- Fixed user‑content/context mixing issues.
-- Stability and performance improvements across the app.
+- In‑Context mode now uses the conversation’s selected model (account or custom instance) instead of the global default.
